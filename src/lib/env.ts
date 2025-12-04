@@ -27,8 +27,15 @@ const envResult = envSchema.safeParse({
 });
 
 if (!envResult.success) {
-  console.error("Invalid environment variables", envResult.error.flatten().fieldErrors);
-  throw new Error("Invalid environment configuration. Check your .env file.");
+  const flattened = envResult.error.flatten().fieldErrors;
+  const details = Object.entries(flattened)
+    .filter(([, issues]) => issues && issues.length)
+    .map(([key, issues]) => `${key}: ${issues?.join(", ")}`)
+    .join("\n");
+
+  console.error("Invalid environment variables", flattened);
+  const hint = details ? `\n${details}` : "";
+  throw new Error(`Invalid environment configuration. Check your .env file.${hint}`);
 }
 
 export const env = envResult.data;

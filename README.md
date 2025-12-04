@@ -27,10 +27,12 @@ Copy `.env.example` to `.env.local` (or `.env`) and fill in values from Google C
 cp .env.example .env.local
 ```
 
+The example file now ships with sensible localhost defaults. Update the URLs/IDs to your production values before deploying. If a value is missing or malformed, `npm run build` will fail with a detailed list of offending keys (thrown from `src/lib/env.ts`).
+
 | Variable | Notes |
 | --- | --- |
 | `DATABASE_URL` | PostgreSQL connection string |
-| `NEXTAUTH_SECRET` | Use `openssl rand -base64 32` |
+| `NEXTAUTH_SECRET` | Use `npx auth secret` or `openssl rand -base64 32` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | From Google Cloud OAuth credentials (web type) |
 | `GOOGLE_OAUTH_REDIRECT_URI` | Should match `/api/auth/google/callback` |
 | `N8N_WEBHOOK_URL` | Existing workflow endpoint |
