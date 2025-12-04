@@ -1,7 +1,9 @@
+import { captureException } from "@sentry/nextjs";
 import { MessageDirection } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureAccessToken, fetchNewInboxMessages, normalizeGmailMessage, sendGmailReply } from "@/lib/gmail";
 import { callN8nWebhook } from "@/lib/n8n";
+import { logError, logInfo, logWarn } from "@/lib/logger";
 
 const DEFAULT_QUERY = "label:INBOX newer_than:1d";
 
@@ -15,10 +17,12 @@ export async function pollAllGmailAccounts() {
   for (const account of accounts) {
     try {
       const processed = await processAccount(account.id);
+      logInfo("poll-gmail processed account", { accountId: account.id, processed });
       summaries.push({ accountId: account.id, processed });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown poll error";
-      console.error("poll-gmail error", message);
+      logError("poll-gmail error", { accountId: account.id, error: message });
+      captureException(error, { extra: { accountId: account.id } });
       summaries.push({ accountId: account.id, processed: 0, error: message });
     }
   }
@@ -33,6 +37,7 @@ async function processAccount(accountId: string) {
   });
 
   if (!account) {
+    logWarn("poll-gmail attempted to process missing account", { accountId });
     return 0;
   }
 
@@ -121,7 +126,8 @@ async function processAccount(accountId: string) {
           error: messageText,
         },
       });
-      console.error("n8n webhook failure", messageText);
+      logError("n8n webhook failure", { accountId: account.id, threadId: thread.id, error: messageText });
+      captureException(error, { extra: { accountId: account.id, threadId: thread.id } });
     }
   }
 

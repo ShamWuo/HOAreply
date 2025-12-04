@@ -11,6 +11,8 @@ const envSchema = z.object({
   GMAIL_POLL_INTERVAL_MINUTES: z.coerce.number().int().min(1).max(60).default(2),
   APP_BASE_URL: z.string().url().default("http://localhost:3000"),
   CRON_SECRET: z.string().optional(),
+  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).optional(),
 });
 
 const envResult = envSchema.safeParse({
@@ -24,6 +26,8 @@ const envResult = envSchema.safeParse({
   GMAIL_POLL_INTERVAL_MINUTES: process.env.GMAIL_POLL_INTERVAL_MINUTES,
   APP_BASE_URL: process.env.APP_BASE_URL,
   CRON_SECRET: process.env.CRON_SECRET,
+  SENTRY_DSN: process.env.SENTRY_DSN,
+  SENTRY_TRACES_SAMPLE_RATE: process.env.SENTRY_TRACES_SAMPLE_RATE,
 });
 
 if (!envResult.success) {

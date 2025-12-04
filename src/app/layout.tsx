@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/session-provider";
 import { cn } from "@/lib/utils";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
   subsets: ["latin"],
+  variable: "--font-sans",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const display = Space_Grotesk({
   subsets: ["latin"],
+  variable: "--font-display",
 });
 
 export const metadata: Metadata = {
@@ -25,15 +25,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full bg-slate-50">
+    <html lang="en" className="h-full">
       <body
         className={cn(
-          geistSans.variable,
-          geistMono.variable,
+          inter.variable,
+          display.variable,
           "min-h-screen bg-slate-50 text-slate-900 antialiased",
         )}
       >
-        <AuthProvider>{children}</AuthProvider>
+        <div className="relative min-h-screen bg-white">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.08),_transparent_45%)]" />
+          <div className="relative">
+            <AuthProvider>{children}</AuthProvider>
+          </div>
+        </div>
       </body>
     </html>
   );

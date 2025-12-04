@@ -1,15 +1,17 @@
 "use client";
 
 import { signOut } from "next-auth/react";
+import { PillButton } from "@/components/ui/pill-button";
 
 export function SignOutButton() {
   return (
-    <button
+    <PillButton
       type="button"
+      variant="secondary"
       onClick={() => signOut({ callbackUrl: "/" })}
-      className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+      className="bg-white/80"
     >
       Sign out
-    </button>
+    </PillButton>
   );
 }

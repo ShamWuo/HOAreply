@@ -45,39 +45,52 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-slate-700">
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="space-y-2">
+        <label htmlFor="email" className="text-sm font-medium text-slate-600">
           Email
         </label>
         <input
           id="email"
           name="email"
           type="email"
+          inputMode="email"
+          autoComplete="email"
           required
-          className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-[0_12px_35px_rgba(15,23,42,0.08)] transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200/60"
         />
       </div>
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-slate-700">
+      <div className="space-y-2">
+        <label htmlFor="password" className="text-sm font-medium text-slate-600">
           Password
         </label>
         <input
           id="password"
           name="password"
           type="password"
+          autoComplete="current-password"
           required
-          className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-[0_12px_35px_rgba(15,23,42,0.08)] transition focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-200/60"
         />
       </div>
-      {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
+      {formError ? (
+        <p
+          className="rounded-2xl border border-red-100 bg-red-50/80 px-4 py-2 text-sm text-red-700"
+          aria-live="polite"
+        >
+          {formError}
+        </p>
+      ) : null}
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-70"
+        className="inline-flex w-full items-center justify-center rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-[0_20px_45px_rgba(15,23,42,0.25)] transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "Signing in…" : "Sign in"}
       </button>
+      <p className="text-center text-xs uppercase tracking-[0.35em] text-slate-400">
+        SSO + audit ready
+      </p>
     </form>
   );
 }

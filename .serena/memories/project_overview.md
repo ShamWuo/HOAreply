@@ -1,0 +1,12 @@
+# BoardInbox AI – Project Overview
+- **Purpose**: SaaS starter for HOA management companies to connect each board's Gmail inbox, normalize threads, route them through existing n8n automations, and answer inside a unified dashboard with AI assistance.
+- **Key Capabilities**: Google OAuth + Gmail polling, AI draft + audit trail, webhook handoff to n8n, HOA-centric dashboard (dashboard + HOA detail + inbox views), landing + auth flows.
+- **Primary Stack**: Next.js 15 App Router (TypeScript, React 19), Tailwind CSS v4 utility classes, NextAuth (credentials + Google) with Prisma Adapter, Prisma ORM + PostgreSQL, Zod validation, Google APIs + n8n webhooks.
+- **Structure Highlights**:
+  - `src/app` – App Router routes: marketing (`page.tsx`), auth (`/auth`), dashboard + HOA flows (`/app/...`), API handlers (`/api`), OAuth, cron job endpoints.
+  - `src/components` – UI components (`landing`, `auth`, `hoa`, `providers`).
+  - `src/lib` – Auth helpers, env loader, Prisma client, Gmail/n8n jobs.
+  - `prisma` – `schema.prisma`, migrations, seed script.
+  - Root configs: `package.json`, `tsconfig.json`, `next.config.ts`, `eslint.config.mjs`.
+- **Design Direction**: Premium SaaS aesthetic (Inter + Space Grotesk fonts, glass panels, gradients, rounded 24–32px radii), consistent design tokens defined in `src/app/globals.css` and reused across landing + app surfaces.
+- **Notable Guidelines**: Environment validation in `src/lib/env.ts` (missing vars cause `npm run build` failures); Gmail cron triggered via `/api/jobs/poll-gmail` optionally guarded by `x-cron-secret`. Ensure OAuth redirect URI matches `.env`.

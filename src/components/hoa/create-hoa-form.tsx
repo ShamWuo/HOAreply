@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { hoaSchema } from "@/lib/validators";
+import { pillButtonClasses } from "@/components/ui/pill-button";
 
 export function CreateHoaForm() {
   const [error, setError] = useState<string | null>(null);
@@ -47,9 +48,9 @@ export function CreateHoaForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <div>
-        <label htmlFor="name" className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <label htmlFor="name" className="text-xs font-semibold uppercase tracking-[0.35em] text-white/70">
           HOA Name
         </label>
         <input
@@ -57,15 +58,23 @@ export function CreateHoaForm() {
           name="name"
           type="text"
           placeholder="e.g. Lakeside Townhomes"
-          className="mt-2 w-full rounded-2xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          className="w-full rounded-2xl border border-white/30 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 shadow-[0_15px_40px_rgba(15,23,42,0.3)] transition focus:border-white focus:outline-none focus:ring-2 focus:ring-white/60"
         />
       </div>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      {success ? <p className="text-sm text-green-600">{success}</p> : null}
+      {error ? (
+        <p className="rounded-2xl border border-red-200/40 bg-red-500/20 px-4 py-2 text-sm text-red-100" aria-live="polite">
+          {error}
+        </p>
+      ) : null}
+      {success ? (
+        <p className="rounded-2xl border border-emerald-200/40 bg-emerald-500/20 px-4 py-2 text-sm text-emerald-100" aria-live="polite">
+          {success}
+        </p>
+      ) : null}
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-2xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-500 disabled:opacity-50"
+        className={pillButtonClasses({ variant: "light", className: "w-full" })}
       >
         {isSubmitting ? "Creating…" : "Create HOA"}
       </button>

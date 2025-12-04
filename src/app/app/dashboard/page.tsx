@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { listUserHoas } from "@/lib/hoa";
 import { CreateHoaForm } from "@/components/hoa/create-hoa-form";
 import { SignOutButton } from "@/components/auth/signout-button";
+import { GlassPanel } from "@/components/ui/glass-panel";
+import { pillButtonClasses } from "@/components/ui/pill-button";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -11,67 +13,129 @@ export default async function DashboardPage() {
   }
 
   const hoas = await listUserHoas(session.user.id);
+  const connectedCount = hoas.filter((hoa) => Boolean(hoa.gmailAccount)).length;
+  const pendingCount = Math.max(hoas.length - connectedCount, 0);
+  const stats = [
+    {
+      label: "Total HOAs",
+      value: hoas.length,
+      helper: "Boards onboarded",
+    },
+    {
+      label: "Gmail live",
+      value: connectedCount,
+      helper: "Ready for AI replies",
+    },
+    {
+      label: "Awaiting connect",
+      value: pendingCount,
+      helper: "Needs OAuth",
+    },
+  ];
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm uppercase tracking-[0.3em] text-slate-500">Overview</p>
-          <h1 className="text-3xl font-semibold text-slate-900">Welcome back, {session.user.name ?? session.user.email}</h1>
-          <p className="text-sm text-slate-500">Connect HOA inboxes and review AI replies.</p>
-        </div>
-        <SignOutButton />
-      </header>
-
-      <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="rounded-3xl border border-slate-200 bg-white/70 p-6 shadow-lg shadow-slate-100">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-800">Your HOAs</h2>
-            <span className="text-xs font-medium uppercase tracking-[0.3em] text-slate-400">
-              {hoas.length} connected
-            </span>
-          </div>
-          <div className="mt-4 space-y-4">
-            {hoas.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No HOAs yet. Create one and connect Gmail to start syncing conversations.
+    <div className="relative min-h-screen bg-slate-50">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.12),_transparent_50%)]" />
+      <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 pb-16 pt-12 md:px-6">
+        <GlassPanel className="p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Operator console</p>
+              <h1 className="text-4xl font-semibold text-slate-900">
+                Welcome back, {session.user.name ?? session.user.email}
+              </h1>
+              <p className="text-base text-slate-500">
+                Monitor AI replies, Gmail health, and HOAs from one premium workspace.
               </p>
-            ) : (
-              hoas.map((hoa) => (
-                <div
-                  key={hoa.id}
-                  className="flex flex-col justify-between gap-2 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-sm text-slate-600 transition hover:border-blue-200 hover:bg-white/90 sm:flex-row sm:items-center"
-                >
-                  <div>
-                    <p className="text-base font-semibold text-slate-900">{hoa.name}</p>
-                    <p className="text-xs uppercase tracking-[0.4em] text-slate-400">
-                      {hoa.gmailAccount ? "Gmail connected" : "Pending Gmail connect"}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/app/hoa/${hoa.id}`}
-                      className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 transition hover:border-blue-200 hover:text-blue-600"
-                    >
-                      Details
-                    </Link>
-                    <Link
-                      href={`/app/hoa/${hoa.id}/inbox`}
-                      className="rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white shadow hover:bg-blue-500"
-                    >
-                      Inbox
-                    </Link>
-                  </div>
-                </div>
-              ))
-            )}
+            </div>
+            <SignOutButton />
           </div>
-        </div>
-        <div className="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-lg shadow-blue-100">
-          <h2 className="text-lg font-semibold text-slate-800">Create new HOA</h2>
-          <CreateHoaForm />
-        </div>
-      </section>
+          <div className="mt-8 grid gap-4 sm:grid-cols-3">
+            {stats.map((stat) => (
+              <GlassPanel key={stat.label} variant="frosted" className="px-5 py-6 text-slate-700">
+                <p className="text-xs uppercase tracking-[0.35em] text-slate-500">{stat.label}</p>
+                <p className="mt-2 text-3xl font-semibold text-slate-900">{stat.value}</p>
+                <p className="text-sm text-slate-500">{stat.helper}</p>
+              </GlassPanel>
+            ))}
+          </div>
+        </GlassPanel>
+
+        <section className="grid gap-6 lg:grid-cols-[1.7fr_1fr]">
+          <GlassPanel className="p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Your HOAs</p>
+                <h2 className="text-2xl font-semibold text-slate-900">Realtime Gmail sync</h2>
+              </div>
+              <span className="rounded-full bg-slate-900/90 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-white">
+                {hoas.length} total
+              </span>
+            </div>
+            <div className="mt-6 space-y-4">
+              {hoas.length === 0 ? (
+                <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50/80 p-8 text-center text-sm text-slate-500">
+                  No HOAs yet. Create one and connect Gmail to start syncing conversations.
+                </div>
+              ) : (
+                hoas.map((hoa) => (
+                  <div
+                    key={hoa.id}
+                    className="flex flex-col gap-4 rounded-[28px] border border-slate-100 bg-white/90 p-5 text-sm text-slate-600 shadow-[0_15px_40px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:border-blue-200 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div>
+                      <p className="text-lg font-semibold text-slate-900">{hoa.name}</p>
+                      <div className="mt-1 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.35em]">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 ${
+                            hoa.gmailAccount ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          {hoa.gmailAccount ? "Gmail connected" : "Needs connect"}
+                        </span>
+                        <span className="text-slate-400">ID {hoa.id.slice(0, 6)}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Link
+                        href={`/app/hoa/${hoa.id}`}
+                        className={pillButtonClasses({ variant: "secondary", size: "sm" })}
+                      >
+                        Details
+                      </Link>
+                      <Link
+                        href={`/app/hoa/${hoa.id}/inbox`}
+                        className={pillButtonClasses({ variant: "primary", size: "sm" })}
+                      >
+                        Inbox
+                      </Link>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </GlassPanel>
+
+          <div className="flex flex-col gap-4 rounded-[36px] border border-white/60 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-[0_45px_120px_rgba(15,23,42,0.4)]">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.45em] text-white/70">Create new HOA</p>
+              <h3 className="mt-3 text-2xl font-semibold">Spin up a concierge inbox in minutes</h3>
+              <p className="mt-2 text-sm text-white/70">Provision Gmail, sync CC&Rs into AI copilots, and notify your n8n flows.</p>
+            </div>
+            <div className="rounded-[28px] border border-white/15 bg-white/5 p-4 text-sm text-white/80">
+              <p className="text-xs uppercase tracking-[0.4em] text-white/60">Playbook</p>
+              <ul className="mt-3 space-y-2 text-sm">
+                <li>1 — Name the HOA and invite operators.</li>
+                <li>2 — Run Google OAuth to link Gmail.</li>
+                <li>3 — Pipe threads into your n8n webhook.</li>
+              </ul>
+            </div>
+            <div className="rounded-[30px] border border-white/20 bg-white/10 p-5 backdrop-blur">
+              <CreateHoaForm />
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

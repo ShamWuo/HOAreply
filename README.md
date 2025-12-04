@@ -39,6 +39,7 @@ The example file now ships with sensible localhost defaults. Update the URLs/IDs
 | `GMAIL_POLL_INTERVAL_MINUTES` | Poll cadence suggestion (not used for scheduling yet) |
 | `APP_BASE_URL` | Used when building absolute URLs |
 | `CRON_SECRET` | Optional shared secret for `/api/jobs/poll-gmail` |
+| `SENTRY_DSN` / `SENTRY_TRACES_SAMPLE_RATE` | Optional Sentry monitoring + trace sampling |
 
 3. **Prisma setup**
 
