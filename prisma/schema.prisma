@@ -12,52 +12,52 @@ model User {
   email        String    @unique
   name         String?
   passwordHash String?
-  hoas         HOA[]
-  accounts     Account[]
-  sessions     Session[]
   createdAt    DateTime  @default(now())
+  accounts     Account[]
+  hoas         HOA[]
+  sessions     Session[]
 }
 
 model HOA {
-  id           String         @id @default(cuid())
+  id           String        @id @default(cuid())
   name         String
-  user         User           @relation(fields: [userId], references: [id])
   userId       String
-  gmailAccount GmailAccount?
+  createdAt    DateTime      @default(now())
   threads      EmailThread[]
-  createdAt    DateTime       @default(now())
+  gmailAccount GmailAccount?
+  user         User          @relation(fields: [userId], references: [id])
 }
 
 model GmailAccount {
-  id           String   @id @default(cuid())
-  hoa          HOA      @relation(fields: [hoaId], references: [id])
-  hoaId        String   @unique
-  email        String   @unique
+  id           String        @id @default(cuid())
+  hoaId        String        @unique
+  email        String        @unique
   accessToken  String
   refreshToken String
   expiryDate   DateTime
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @default(now()) @updatedAt
   threads      EmailThread[]
+  hoa          HOA           @relation(fields: [hoaId], references: [id], onDelete: Cascade)
 }
 
 model EmailThread {
-  id             String        @id @default(cuid())
-  hoa            HOA           @relation(fields: [hoaId], references: [id])
+  id             String         @id @default(cuid())
   hoaId          String
-  gmailAccount   GmailAccount? @relation(fields: [gmailAccountId], references: [id])
   gmailAccountId String?
-  gmailThreadId  String        @unique
+  gmailThreadId  String         @unique
   subject        String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @default(now()) @updatedAt
   messages       EmailMessage[]
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  gmailAccount   GmailAccount?  @relation(fields: [gmailAccountId], references: [id])
+  hoa            HOA            @relation(fields: [hoaId], references: [id], onDelete: Cascade)
+
   @@index([hoaId])
 }
 
 model EmailMessage {
   id             String           @id @default(cuid())
-  thread         EmailThread      @relation(fields: [threadId], references: [id])
   threadId       String
   gmailMessageId String?          @unique
   direction      MessageDirection
@@ -66,25 +66,22 @@ model EmailMessage {
   bodyText       String
   bodyHtml       String?
   receivedAt     DateTime
-  aiReply        AIReply?
   metaJson       Json?
+  aiReply        AIReply?
+  thread         EmailThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
   @@index([threadId])
 }
 
 model AIReply {
   id        String       @id @default(cuid())
-  message   EmailMessage @relation(fields: [messageId], references: [id])
   messageId String       @unique
   replyText String
   sent      Boolean      @default(false)
   error     String?
   createdAt DateTime     @default(now())
   sentAt    DateTime?
-}
-
-enum MessageDirection {
-  INCOMING
-  OUTGOING
+  message   EmailMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 }
 
 model Account {
@@ -93,16 +90,17 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -119,4 +117,9 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+enum MessageDirection {
+  INCOMING
+  OUTGOING
 }
