@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signupSchema } from "@/lib/validators";
 
@@ -95,21 +95,18 @@ export function SignupForm() {
         />
       </div>
       {formError ? (
-        <p
-          className="rounded-2xl border border-red-100 bg-red-50/80 px-4 py-2 text-sm text-red-700"
-          aria-live="polite"
-        >
+        <p className="rounded-2xl border border-red-100 bg-red-50/80 px-4 py-2 text-sm text-red-700" aria-live="polite">
           {formError}
         </p>
       ) : null}
       <button
         type="submit"
         disabled={isSubmitting}
-        className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-[0_22px_50px_rgba(37,99,235,0.35)] transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex w-full items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_22px_50px_rgba(37,99,235,0.35)] transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {isSubmitting ? "Creating account…" : "Create account"}
+        {isSubmitting ? "Creating account..." : "Create account"}
       </button>
-      <p className="text-center text-xs text-slate-500">No credit card required • SOC2 posture ready</p>
+      <p className="text-center text-xs text-slate-500">No credit card required · SOC2 posture ready</p>
     </form>
   );
 }

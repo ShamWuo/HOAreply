@@ -53,7 +53,7 @@ export default function AuthLayout({
               ))}
             </div>
           </section>
-          <section className="rounded-[32px] border border-white/70 bg-white/95 p-8 shadow-[0_35px_100px_rgba(15,23,42,0.18)] backdrop-blur">
+          <section className="rounded-[32px] border border-slate-100 bg-white p-8 shadow-[0_30px_90px_rgba(15,23,42,0.12)]">
             <div className="mb-8 space-y-2 text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">BoardInbox AI Connect</p>
               <h1 className="text-3xl font-semibold text-slate-900">Authenticate your workspace</h1>

@@ -11,11 +11,12 @@ export function LandingHero() {
           </div>
           <div>
             <h1 className="text-4xl font-bold leading-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              AI Inbox Assistant for HOA managers
+              Stop drowning in resident emails.
             </h1>
             <p className="mt-4 text-lg text-slate-600">
-              Connect Gmail. AI reads, sorts, and drafts replies to resident emails instantly. Boards approve with a click, and Gmail stays the source of truth.
+              Your Gmail stays the source of truth. AI reads every message, sorts it, drafts the reply, and you approve with one click.
             </p>
+            <p className="mt-3 text-sm text-slate-600">Cut reply time by 40-60% in the first week.</p>
           </div>
           <div className="flex flex-col gap-4 sm:flex-row">
             <Link
@@ -32,7 +33,7 @@ export function LandingHero() {
             </Link>
           </div>
           <div className="text-sm text-slate-600">
-            Trusted by community managers across the US · 14-day guarantee · No credit card required
+            No credit card · No lock-in · 10-minute setup
           </div>
           <div className="grid gap-6 sm:grid-cols-3">
             {[
@@ -49,28 +50,28 @@ export function LandingHero() {
         </div>
         <div className="relative animate-slide-in animate-delay-1">
           <div className="rounded-[28px] card-dark p-1 text-white card-tilt">
-            <div className="rounded-[24px] bg-slate-950/80 p-6">
-              <p className="text-xs uppercase tracking-[0.4em] text-slate-400">Inbox overview</p>
+            <div className="rounded-[24px] bg-gradient-to-br from-[#1d2f4f]/90 via-[#131c34]/95 to-[#0f1c33] p-6">
+              <p className="text-xs uppercase tracking-[0.4em] text-blue-200/80">Inbox overview</p>
               <div className="mt-4 space-y-4">
                 {["Northshore HOA", "Harbor Point", "Grand Oaks", "Sunset Villas"].map((hoa, index) => (
-                  <div key={hoa} className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_20px_50px_rgba(0,0,0,0.25)]">
-                    <div className="flex items-center justify-between text-sm">
+                  <div key={hoa} className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-md px-5 py-4 shadow-[0_25px_60px_rgba(9,12,26,0.45)]">
+                    <div className="flex items-center justify-between text-sm text-blue-50">
                       <p className="font-semibold">{hoa}</p>
-                      <span className="text-xs text-blue-300">{index === 0 ? "Live" : "Sync"}</span>
+                      <span className="text-xs text-emerald-300/90">{index === 0 ? "Live" : "Sync"}</span>
                     </div>
-                    <div className="mt-3 flex items-center gap-4 text-xs text-slate-300">
+                    <div className="mt-3 flex items-center gap-4 text-xs text-blue-100/80">
                       <div>
-                        <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500">Unread</p>
+                        <p className="text-[11px] uppercase tracking-[0.4em] text-blue-200/60">Unread</p>
                         <p className="text-base text-white">{6 - index}</p>
                       </div>
                       <div>
-                        <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500">AI drafts</p>
+                        <p className="text-[11px] uppercase tracking-[0.4em] text-blue-200/60">AI drafts</p>
                         <p className="text-base text-white">{index + 1}</p>
                       </div>
                       <div className="flex-1">
-                        <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500">SLA</p>
-                        <div className="mt-2 h-2 rounded-full bg-slate-800">
-                          <div className="h-full rounded-full bg-blue-500" style={{ width: `${70 + index * 6}%` }} />
+                        <p className="text-[11px] uppercase tracking-[0.4em] text-blue-200/60">SLA</p>
+                        <div className="mt-2 h-2 rounded-full bg-white/20">
+                          <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500" style={{ width: `${70 + index * 6}%` }} />
                         </div>
                       </div>
                     </div>
