@@ -1,0 +1,181 @@
+import type { AIReply, EmailMessage, EmailThread, GmailAccount } from "@prisma/client";
+import { MessageDirection } from "@prisma/client";
+import { refreshAccessToken, getGmailMessage, listGmailMessages, sendGmailMessage } from "@/lib/google-api";
+import { prisma } from "@/lib/prisma";
+import type { GmailMessage } from "@/lib/google-api";
+
+const REFRESH_THRESHOLD_MS = 60 * 1000;
+
+export async function ensureAccessToken(account: GmailAccount) {
+  if (account.expiryDate.getTime() - Date.now() > REFRESH_THRESHOLD_MS) {
+    return account;
+  }
+
+  console.info(`Refreshing Gmail token for HOA ${account.hoaId}`);
+  const refreshed = await refreshAccessToken(account.refreshToken);
+  return prisma.gmailAccount.update({
+    where: { id: account.id },
+    data: {
+      accessToken: refreshed.accessToken,
+      expiryDate: new Date(Date.now() + refreshed.expiresIn * 1000),
+    },
+  });
+}
+
+export function parseGmailHeaders(message: GmailMessage) {
+  const headers = message.payload.headers ?? [];
+  const headerMap = new Map(headers.map((header) => [header.name.toLowerCase(), header.value]));
+
+  return {
+    subject: headerMap.get("subject") ?? "(no subject)",
+    from: headerMap.get("from") ?? "",
+    to: headerMap.get("to") ?? "",
+    messageId: headerMap.get("message-id"),
+    references: headerMap.get("references"),
+    inReplyTo: headerMap.get("in-reply-to"),
+    date: headerMap.get("date"),
+  };
+}
+
+function decodeBody(data?: string) {
+  if (!data) {
+    return "";
+  }
+
+  const normalized = data.replace(/-/g, "+").replace(/_/g, "/");
+  return Buffer.from(normalized, "base64").toString("utf8");
+}
+
+function extractBody(
+  payload: GmailMessage["payload"],
+  mimeType: "text/plain" | "text/html",
+): string {
+  if (payload.mimeType?.includes(mimeType) && payload.body?.data) {
+    return decodeBody(payload.body.data);
+  }
+
+  if (payload.parts) {
+    for (const part of payload.parts) {
+      const body = extractBody(part, mimeType);
+      if (body) {
+        return body;
+      }
+    }
+  }
+
+  return "";
+}
+
+export function normalizeGmailMessage(message: GmailMessage) {
+  const headers = parseGmailHeaders(message);
+  const plain = extractBody(message.payload, "text/plain");
+  const html = extractBody(message.payload, "text/html");
+
+  return {
+    headers,
+    plainText: plain || html,
+    html,
+    receivedAt: headers.date ? new Date(headers.date) : new Date(Number(message.internalDate ?? Date.now())),
+  };
+}
+
+export async function fetchNewInboxMessages(account: GmailAccount, query: string) {
+  const list = await listGmailMessages(account.accessToken, query);
+  if (!list.messages?.length) {
+    return [];
+  }
+
+  const detailed: GmailMessage[] = [];
+  for (const meta of list.messages) {
+    const exists = await prisma.emailMessage.findUnique({
+      where: { gmailMessageId: meta.id },
+      select: { id: true },
+    });
+
+    if (exists) {
+      continue;
+    }
+
+    const message = await getGmailMessage(account.accessToken, meta.id);
+    detailed.push(message);
+  }
+
+  return detailed;
+}
+
+function buildReplyMime(params: {
+  from: string;
+  to: string;
+  subject: string;
+  body: string;
+  inReplyTo?: string | null;
+  references?: string | null;
+}) {
+  const headers = [
+    `From: ${params.from}`,
+    `To: ${params.to}`,
+    `Subject: ${params.subject}`,
+    "MIME-Version: 1.0",
+    "Content-Type: text/plain; charset=\"UTF-8\"",
+  ];
+
+  if (params.inReplyTo) {
+    headers.push(`In-Reply-To: ${params.inReplyTo}`);
+  }
+
+  if (params.references) {
+    headers.push(`References: ${params.references}`);
+  }
+
+  return `${headers.join("\r\n")}\r\n\r\n${params.body}`;
+}
+
+export async function sendGmailReply(params: {
+  account: GmailAccount;
+  thread: EmailThread;
+  originalMessage: EmailMessage;
+  aiReply: AIReply;
+}) {
+  const freshAccount = await ensureAccessToken(params.account);
+  const meta = (params.originalMessage.metaJson ?? {}) as Record<string, string | undefined>;
+
+  const rawMime = buildReplyMime({
+    from: freshAccount.email,
+    to: params.originalMessage.from,
+    subject: params.thread.subject.startsWith("Re:")
+      ? params.thread.subject
+      : `Re: ${params.thread.subject}`,
+    body: params.aiReply.replyText,
+    inReplyTo: meta.messageId,
+    references: meta.references,
+  });
+
+  const encoded = Buffer.from(rawMime).toString("base64url");
+
+  await sendGmailMessage(freshAccount.accessToken, {
+    raw: encoded,
+    threadId: params.thread.gmailThreadId,
+  });
+
+  await prisma.emailMessage.create({
+    data: {
+      threadId: params.thread.id,
+      gmailMessageId: null,
+      direction: MessageDirection.OUTGOING,
+      from: freshAccount.email,
+      to: params.originalMessage.from,
+      bodyText: params.aiReply.replyText,
+      bodyHtml: null,
+      receivedAt: new Date(),
+    },
+  });
+
+  await prisma.aIReply.update({
+    where: { id: params.aiReply.id },
+    data: {
+      sent: true,
+      sentAt: new Date(),
+      error: null,
+    },
+  });
+}

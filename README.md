@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BoardInbox AI Connect
+
+BoardInbox AI Connect is a production-ready SaaS starter that lets HOA managers connect their Gmail inboxes, normalize messages, send them to an existing n8n flow, and reply directly from a unified dashboard.
+
+## Stack
+
+- Next.js 15 (App Router) + TypeScript
+- Tailwind CSS
+- NextAuth Credentials provider + Prisma Adapter
+- PostgreSQL + Prisma ORM
+- Google OAuth & Gmail REST APIs
+- n8n webhook integration for AI replies
 
 ## Getting Started
 
-First, run the development server:
+1. **Install dependencies**
+
+```bash
+npm install
+```
+
+2. **Set up environment variables**
+
+Copy `.env.example` to `.env.local` (or `.env`) and fill in values from Google Cloud, n8n, and your database.
+
+```bash
+cp .env.example .env.local
+```
+
+| Variable | Notes |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `NEXTAUTH_SECRET` | Use `openssl rand -base64 32` |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | From Google Cloud OAuth credentials (web type) |
+| `GOOGLE_OAUTH_REDIRECT_URI` | Should match `/api/auth/google/callback` |
+| `N8N_WEBHOOK_URL` | Existing workflow endpoint |
+| `GMAIL_POLL_INTERVAL_MINUTES` | Poll cadence suggestion (not used for scheduling yet) |
+| `APP_BASE_URL` | Used when building absolute URLs |
+| `CRON_SECRET` | Optional shared secret for `/api/jobs/poll-gmail` |
+
+3. **Prisma setup**
+
+```bash
+npx prisma migrate dev
+npm run prisma:generate
+npm run prisma:studio # optional UI
+```
+
+To load demo data:
+
+```bash
+npm run prisma:seed
+```
+
+4. **Run the app**
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit `http://localhost:3000` for marketing site, `/auth/signup` to create a user, and `/app/dashboard` for the authenticated app.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Gmail OAuth configuration
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Create a Google Cloud project and enable the Gmail API.
+2. Create OAuth credentials (Web application).
+3. Add `http://localhost:3000/api/auth/google/callback` to the authorized redirect URIs.
+4. Update `.env` with `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and redirect URI.
 
-## Learn More
+## Gmail polling job
 
-To learn more about Next.js, take a look at the following resources:
+The job is implemented at `POST /api/jobs/poll-gmail`. It can be triggered in three ways:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Manual `curl` with valid session cookies (dev use).
+- Authenticated request with `x-cron-secret` header when `CRON_SECRET` is set (for GitHub Actions, UptimeRobot, etc.).
+- Future background worker (code is structured so the handler only orchestrates `pollAllGmailAccounts`).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Example scheduled request (GitHub Actions):
 
-## Deploy on Vercel
+```yaml
+- name: Poll Gmail
+	run: |
+		curl -X POST "${{ env.APP_BASE_URL }}/api/jobs/poll-gmail" \
+			-H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+			-H "Content-Type: application/json"
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project structure highlights
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/lib/` – Prisma client, env loader, Google/Gmail helpers, webhook caller, jobs.
+- `src/components/` – UI primitives (auth forms, HOA forms, landing hero, etc.).
+- `src/app/` – App Router routes (marketing, auth, dashboard, HOA pages, APIs).
+- `prisma/schema.prisma` – Database schema + migrations.
+
+## Development notes
+
+- All sensitive tokens are stored encrypted at rest by your database; ensure TLS is enabled in production.
+- Add proper logging (e.g., pino) or monitoring before deploying.
+- Replace `window.location.reload()` calls with SWR/tRPC for a smoother UX if needed.
+- For production scheduling, move `pollAllGmailAccounts` into a worker/cron service.
+
+## Testing
+
+No automated tests are included yet. Recommended next steps:
+
+1. Add integration tests for auth routes using Next.js `app-router` test utilities.
+2. Mock Gmail/n8n APIs when testing job logic.
+3. Verify Google OAuth and webhook flows in a staging environment with HTTPS.
+
+Happy shipping!
