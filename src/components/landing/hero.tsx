@@ -11,10 +11,10 @@ export function LandingHero() {
           </div>
           <div>
             <h1 className="text-4xl font-bold leading-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              Every resident email. One simple inbox. Replies drafted for you.
+              AI Inbox Assistant for HOA managers
             </h1>
             <p className="mt-4 text-lg text-slate-600">
-              Connect your HOA Gmail, let AI draft responses, and approve with a click. Keep Gmail as-is—BoardInbox AI just makes it faster.
+              Connect Gmail. AI reads, sorts, and drafts replies to resident emails instantly. Boards approve with a click, and Gmail stays the source of truth.
             </p>
           </div>
           <div className="flex flex-col gap-4 sm:flex-row">
@@ -22,20 +22,23 @@ export function LandingHero() {
               href="/auth/signup"
               className="inline-flex items-center justify-center rounded-full bg-blue-600 px-7 py-3 text-sm font-semibold text-white shadow-[0_20px_45px_rgba(37,99,235,0.35)] transition hover:bg-blue-500"
             >
-              Start free onboarding
+              Start free trial
             </Link>
             <Link
               href="/auth/login"
               className="inline-flex items-center justify-center rounded-full border border-slate-200 px-7 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-300"
             >
-              See how it works
+              Book a demo
             </Link>
+          </div>
+          <div className="text-sm text-slate-600">
+            Trusted by community managers across the US · 14-day guarantee · No credit card required
           </div>
           <div className="grid gap-6 sm:grid-cols-3">
             {[
-              { label: "Minutes to connect", value: "< 5" },
-              { label: "Replies drafted automatically", value: "Most emails" },
-              { label: "Boards approving faster", value: "Yes" },
+              { label: "Replies drafted", value: "Most emails" },
+              { label: "Reduction in inbox time", value: "Up to 50%" },
+              { label: "Setup time", value: "< 10 minutes" },
             ].map((stat) => (
               <div key={stat.label} className="rounded-2xl border border-white/70 bg-slate-50/60 px-4 py-3 text-center">
                 <p className="text-2xl font-semibold text-slate-900">{stat.value}</p>
