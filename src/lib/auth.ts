@@ -52,6 +52,7 @@ type SessionCallbackArgs = {
     user?: SessionUser | null;
   };
   user?: SessionUser | null;
+  token?: Record<string, unknown> | null;
 };
 
 type AuthorizedCallbackArgs = {
@@ -62,18 +63,30 @@ type AuthorizedCallbackArgs = {
 const authConfig = {
   adapter: PrismaAdapter(prisma),
   session: {
-    strategy: "database" as const,
+    strategy: "jwt" as const,
   },
   pages: {
     signIn: "/auth/login",
   },
   providers: [credentialsProvider],
   callbacks: {
-    async session({ session, user }: SessionCallbackArgs) {
-      if (session.user && user?.id && user.email) {
-        session.user.id = user.id;
-        session.user.email = user.email;
-        session.user.name = user.name ?? session.user.name ?? null;
+    async session({ session, user, token }: SessionCallbackArgs) {
+      if (!session.user) {
+        session.user = {};
+      }
+
+      const id = user?.id ?? (token?.sub as string | undefined);
+      const email = user?.email ?? (token?.email as string | undefined);
+      const name = user?.name ?? (token?.name as string | undefined);
+
+      if (id) {
+        session.user.id = id;
+      }
+      if (email) {
+        session.user.email = email;
+      }
+      if (name) {
+        session.user.name = name;
       }
 
       return session;
