@@ -69,6 +69,18 @@ const authConfig = {
     signIn: "/auth/login",
   },
   providers: [credentialsProvider],
+  debug: process.env.NODE_ENV !== "production",
+  logger: {
+    error(code, metadata) {
+      console.error("Auth.js error", code, metadata);
+    },
+    warn(code) {
+      console.warn("Auth.js warning", code);
+    },
+    debug(code, metadata) {
+      console.debug("Auth.js debug", code, metadata);
+    },
+  },
   callbacks: {
     async session({ session, user, token }: SessionCallbackArgs) {
       if (!session.user) {
