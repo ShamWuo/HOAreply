@@ -1,6 +1,6 @@
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth from "next-auth";
-import type { Session } from "next-auth";
+import type { LoggerInstance, Session } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import type { NextRequest } from "next/server";
 import { prisma } from "./prisma";
@@ -60,6 +60,18 @@ type AuthorizedCallbackArgs = {
   request: NextRequest;
 };
 
+const authLogger: LoggerInstance = {
+  error(code, metadata) {
+    console.error("Auth.js error", code, metadata);
+  },
+  warn(code) {
+    console.warn("Auth.js warning", code);
+  },
+  debug(code, metadata) {
+    console.debug("Auth.js debug", code, metadata);
+  },
+};
+
 const authConfig = {
   adapter: PrismaAdapter(prisma),
   session: {
@@ -70,17 +82,7 @@ const authConfig = {
   },
   providers: [credentialsProvider],
   debug: process.env.NODE_ENV !== "production",
-  logger: {
-    error(code, metadata) {
-      console.error("Auth.js error", code, metadata);
-    },
-    warn(code) {
-      console.warn("Auth.js warning", code);
-    },
-    debug(code, metadata) {
-      console.debug("Auth.js debug", code, metadata);
-    },
-  },
+  logger: authLogger,
   callbacks: {
     async session({ session, user, token }: SessionCallbackArgs) {
       if (!session.user) {
