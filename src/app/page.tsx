@@ -77,7 +77,7 @@ export default function Home() {
       <main className="mx-auto flex max-w-6xl flex-col gap-20 px-4 pb-20 pt-16 md:px-6">
         <LandingHero />
 
-        <section className="grid gap-6 md:grid-cols-2" id="pains">
+        <section className="grid gap-6 md:grid-cols-2 animate-fade-up" id="pains">
           <div className="rounded-3xl border border-white/60 bg-white/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
             <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Pain points</p>
             <h3 className="mt-3 text-2xl font-semibold text-slate-900">We know where it hurts</h3>
@@ -107,7 +107,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="features" className="grid gap-6 md:grid-cols-3">
+        <section id="features" className="grid gap-6 md:grid-cols-3 animate-fade-up animate-delay-1">
           {features.map((feature) => (
             <div
               key={feature.title}
@@ -120,7 +120,7 @@ export default function Home() {
           ))}
         </section>
 
-        <section id="screenshots" className="space-y-6 rounded-[32px] border border-white/60 bg-white/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
+        <section id="screenshots" className="space-y-6 rounded-[32px] border border-white/60 bg-white/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.08)] animate-fade-up animate-delay-2">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Screenshots</p>
@@ -139,7 +139,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="space-y-6" id="case-study">
+        <section className="space-y-6 animate-fade-up" id="case-study">
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Case study</p>
           <div className="rounded-[28px] border border-white/60 bg-white/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
             <h3 className="text-2xl font-semibold text-slate-900">{caseStudy.title}</h3>
@@ -154,7 +154,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="space-y-8" id="pricing">
+        <section className="space-y-8 animate-fade-up" id="pricing">
           <div className="flex flex-col gap-2">
             <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Pricing</p>
             <h3 className="text-3xl font-semibold text-slate-900">Simple plans</h3>
@@ -195,7 +195,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="space-y-6" id="faq">
+        <section className="space-y-6 animate-fade-up" id="faq">
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">FAQ</p>
           <div className="grid gap-4 md:grid-cols-2">
             {faq.map((item) => (
@@ -207,7 +207,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="space-y-4 rounded-[28px] border border-white/60 bg-white/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.08)]" id="security">
+        <section className="space-y-4 rounded-[28px] border border-white/60 bg-white/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.08)] animate-fade-up" id="security">
           <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Security & compliance</p>
           <h3 className="text-2xl font-semibold text-slate-900">Enterprise-ready from day one</h3>
           <ul className="space-y-2 text-sm text-slate-600">
@@ -228,7 +228,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="rounded-[32px] border border-white/60 bg-gradient-to-br from-blue-600 to-slate-900 p-10 text-white shadow-[0_40px_90px_rgba(15,23,42,0.35)]">
+        <section className="rounded-[32px] border border-white/60 bg-gradient-to-br from-blue-600 to-slate-900 p-10 text-white shadow-[0_40px_90px_rgba(15,23,42,0.35)] animate-fade-up">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.4em] text-white/70">Ready?</p>
