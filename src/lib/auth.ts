@@ -2,6 +2,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth from "next-auth";
 import type { Session } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import type { NextRequest } from "next/server";
 import { prisma } from "./prisma";
 import { verifyPassword } from "./password";
@@ -86,7 +87,13 @@ const authConfig = {
   pages: {
     signIn: "/auth/login",
   },
-  providers: [credentialsProvider],
+  providers: [
+    Google({
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+    }),
+    credentialsProvider,
+  ],
   debug: process.env.NODE_ENV !== "production",
   logger: authLogger,
   callbacks: {
