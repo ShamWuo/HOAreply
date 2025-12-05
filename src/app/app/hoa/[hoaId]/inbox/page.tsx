@@ -123,7 +123,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                     href={`/app/hoa/${resolvedParams.hoaId}/inbox?thread=${thread.id}`}
                     scroll={false}
                     className={cn(
-                      "block w-full rounded-[26px] border px-4 py-4 text-left text-sm transition",
+                      "block w-full rounded-2xl border px-4 py-4 text-left text-sm transition",
                       isActive
                         ? "border-slate-800 bg-slate-900 text-white shadow-[0_18px_45px_rgba(15,23,42,0.25)]"
                         : "border-slate-100 bg-white/80 text-slate-600 hover:border-blue-200 hover:bg-white",
