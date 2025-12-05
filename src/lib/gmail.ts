@@ -100,12 +100,14 @@ export async function fetchNewInboxMessages(account: GmailAccount, query: string
   const count = list.messages?.length ?? 0;
   logInfo("gmail list results", { accountId: account.id, email: account.email, count, query });
 
-  if (!count) {
+  if (!count || !list.messages) {
     return [];
   }
 
   const detailed: GmailMessage[] = [];
-  for (const meta of list.messages) {
+  const messages = list.messages ?? [];
+
+  for (const meta of messages) {
     const exists = await prisma.emailMessage.findUnique({
       where: { gmailMessageId: meta.id },
       select: { id: true },

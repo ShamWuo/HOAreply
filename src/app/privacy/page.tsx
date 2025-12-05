@@ -10,29 +10,11 @@ export const generateMetadata = () =>
 export default function PrivacyPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-16">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">Privacy</p>
-          <h1 className="text-3xl font-semibold">Privacy Policy</h1>
-          <p className="text-sm text-slate-600">
-            Clear controls for managers and boards. You can exit this page anytime via the buttons on the right.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/"
-            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 transition hover:border-slate-300"
-          >
-            Back to homepage
-          </Link>
-          <Link
-            href="/app/dashboard"
-            className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.2)] transition hover:translate-y-0.5"
-          >
-            Go to dashboard
-          </Link>
-        </div>
-      </div>
+      <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">Privacy</p>
+      <h1 className="text-3xl font-semibold">Privacy Policy</h1>
+      <p className="text-sm text-slate-600">
+        Clear controls for managers and boards. Use the site header to navigate back to the app or homepage.
+      </p>
       <p className="mt-4 text-sm text-slate-700">
         HOA Reply AI (&quot;we,&quot; &quot;us,&quot; &quot;our&quot;) provides an AI-powered email assistant for homeowner
         association managers. This Privacy Policy explains what Google user data we access, why we
@@ -113,6 +95,9 @@ export default function PrivacyPage() {
         <p>
           This Privacy Policy lives at https://hoareply.com/privacy. Use the exact same link when configuring
           your Google Cloud OAuth consent screen and when referencing the policy in external listings.
+        </p>
+        <p className="mt-3">
+          See also our <Link href="/terms" className="text-blue-600 underline">Terms of Service</Link>.
         </p>
       </section>
     </div>
