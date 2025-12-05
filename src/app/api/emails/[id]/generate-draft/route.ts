@@ -1,11 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getClassificationAndDraftFromN8n } from "@/lib/n8n";
 import { createGmailDraftForManager } from "@/lib/gmail";
 import type { HOAEmailInput, HOAManagerContext } from "@/lib/n8n-draft-types";
 
-export async function POST(_req: Request, context: { params: { id: string } }) {
+type GenerateDraftContext = {
+  params: { id: string };
+};
+
+export async function POST(_req: NextRequest, context: GenerateDraftContext) {
   const { params } = context;
   const session = await auth();
   if (!session?.user?.id) {
