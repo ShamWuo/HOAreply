@@ -58,7 +58,7 @@ export function CreateHoaForm() {
           name="name"
           type="text"
           placeholder="e.g. Lakeside Townhomes"
-          className="w-full rounded-2xl border border-white/30 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 shadow-[0_15px_40px_rgba(15,23,42,0.3)] transition focus:border-white focus:outline-none focus:ring-2 focus:ring-white/60"
+          className="w-full rounded-2xl border border-white/25 bg-white/8 px-4 py-3 text-sm text-white placeholder:text-white/60 shadow-[0_15px_35px_rgba(0,0,0,0.28)] transition focus:border-white focus:outline-none focus:ring-2 focus:ring-blue-200/60"
         />
       </div>
       {error ? (
@@ -76,8 +76,12 @@ export function CreateHoaForm() {
         disabled={isSubmitting}
         className={pillButtonClasses({ variant: "light", className: "w-full" })}
       >
-        {isSubmitting ? "Creating…" : "Create HOA"}
+        {isSubmitting ? "Creating..." : "Create HOA"}
       </button>
     </form>
   );
 }
+
+
+
+

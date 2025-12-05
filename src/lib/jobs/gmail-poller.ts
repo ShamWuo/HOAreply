@@ -4,15 +4,46 @@ import { prisma } from "@/lib/prisma";
 import { ensureAccessToken, fetchNewInboxMessages, normalizeGmailMessage, sendGmailReply } from "@/lib/gmail";
 import { callN8nWebhook } from "@/lib/n8n";
 import { logError, logInfo, logWarn } from "@/lib/logger";
+import { acquireJobLock, releaseJobLock } from "@/lib/job-lock";
+import { env } from "@/lib/env";
 
-const DEFAULT_QUERY = "label:INBOX newer_than:1d";
+const DEFAULT_QUERY = "label:INBOX newer_than:7d";
+const POLL_JOB_ID = "poll-gmail";
+const POLL_LOCK_WINDOW_MS = Math.max(env.GMAIL_POLL_INTERVAL_MINUTES, 1) * 60 * 1000;
+
+type PollSummary = {
+  accountId: string;
+  processed: number;
+  error?: string;
+};
+
+type PollJobResult = {
+  skipped: boolean;
+  summaries: PollSummary[];
+  reason?: string;
+};
+
+export async function runGmailPollJob(): Promise<PollJobResult> {
+  const lockAcquired = await acquireJobLock(POLL_JOB_ID, POLL_LOCK_WINDOW_MS);
+  if (!lockAcquired) {
+    logWarn("poll-gmail skipped - lock held", { jobId: POLL_JOB_ID });
+    return { skipped: true, summaries: [], reason: "Job already running" };
+  }
+
+  try {
+    const summaries = await pollAllGmailAccounts();
+    return { skipped: false, summaries };
+  } finally {
+    await releaseJobLock(POLL_JOB_ID);
+  }
+}
 
 export async function pollAllGmailAccounts() {
   const accounts = await prisma.gmailAccount.findMany({
     include: { hoa: true },
   });
 
-  const summaries: Array<{ accountId: string; processed: number; error?: string }> = [];
+  const summaries: PollSummary[] = [];
 
   for (const account of accounts) {
     try {
@@ -28,6 +59,10 @@ export async function pollAllGmailAccounts() {
   }
 
   return summaries;
+}
+
+export async function pollGmailAccount(accountId: string) {
+  return processAccount(accountId);
 }
 
 async function processAccount(accountId: string) {

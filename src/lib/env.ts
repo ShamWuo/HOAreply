@@ -13,6 +13,8 @@ const envSchema = z.object({
   CRON_SECRET: z.string().optional(),
   SENTRY_DSN: z.string().url().optional(),
   SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).optional(),
+  N8N_CLASSIFY_DRAFT_URL: z.string().url().optional(),
+  N8N_HOAREPLY_SECRET: z.string().optional(),
 });
 
 const envResult = envSchema.safeParse({
@@ -28,6 +30,8 @@ const envResult = envSchema.safeParse({
   CRON_SECRET: process.env.CRON_SECRET,
   SENTRY_DSN: process.env.SENTRY_DSN,
   SENTRY_TRACES_SAMPLE_RATE: process.env.SENTRY_TRACES_SAMPLE_RATE,
+  N8N_CLASSIFY_DRAFT_URL: process.env.N8N_CLASSIFY_DRAFT_URL,
+  N8N_HOAREPLY_SECRET: process.env.N8N_HOAREPLY_SECRET,
 });
 
 if (!envResult.success) {

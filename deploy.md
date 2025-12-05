@@ -42,6 +42,7 @@ The job handler is `POST /api/jobs/poll-gmail`. For automated polling:
 
 - Use a scheduler (GitHub Actions, provider cron, Uptime Robot) to POST the endpoint.
 - If you set `CRON_SECRET`, include header `x-cron-secret: <CRON_SECRET>` for authentication.
+- A database-backed mutex prevents overlapping runs across app instances. When the endpoint responds with HTTP 202 and `{ "skipped": true }`, another poll is already running—treat it as a soft success and let the next schedule fire normally.
 
 Example GitHub Actions job (simple):
 
@@ -73,6 +74,7 @@ jobs:
 - Rotate credentials if you suspect leakage. Use limited-permission DB users.
 - Add structured logging and monitoring (Sentry, Datadog, etc.) before production traffic.
 - Consider running background workers or a dedicated scheduler for polling instead of relying on in-app HTTP cron triggers.
+- Monitor `GET /api/health` in your uptime checks; it verifies Prisma can reach the database and returns HTTP 500 if dependencies are down.
 
 ## Optional: CI snippet
 If you want, I can add a GitHub Actions workflow that:

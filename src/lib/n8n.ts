@@ -1,4 +1,7 @@
 import { env } from "@/lib/env";
+import type { HOAEmailInput, HOAManagerContext, N8nClassifyDraftResponse } from "@/lib/n8n-draft-types";
+
+const WEBHOOK_TIMEOUT_MS = 10_000;
 
 export interface N8nWebhookPayload {
   hoaId: string;
@@ -22,24 +25,84 @@ export interface N8nWebhookResponse {
 }
 
 export async function callN8nWebhook(payload: N8nWebhookPayload) {
-  const response = await fetch(env.N8N_WEBHOOK_URL, {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(env.N8N_WEBHOOK_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`n8n webhook error (${response.status}): ${errorBody}`);
+    }
+
+    const data = (await response.json()) as N8nWebhookResponse;
+    if (typeof data.replyText !== "string" || data.replyText.trim().length === 0) {
+      throw new Error("n8n response missing replyText");
+    }
+
+    return {
+      replyText: data.replyText,
+      send: data.send ?? false,
+    };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`n8n webhook timed out after ${WEBHOOK_TIMEOUT_MS}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Classification + draft helper for HOAReply workflows
+export async function getClassificationAndDraftFromN8n(
+  email: HOAEmailInput,
+  manager: HOAManagerContext,
+): Promise<N8nClassifyDraftResponse> {
+  const url = process.env.N8N_CLASSIFY_DRAFT_URL;
+  const secret = process.env.N8N_HOAREPLY_SECRET;
+
+  if (!url) {
+    console.error("N8N_CLASSIFY_DRAFT_URL is not set");
+    throw new Error("n8n integration misconfigured");
+  }
+
+  if (!secret) {
+    console.error("N8N_HOAREPLY_SECRET is not set");
+    throw new Error("n8n integration misconfigured");
+  }
+
+  const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      "x-hoareply-secret": secret,
+    },
+    body: JSON.stringify({ email, manager }),
+    cache: "no-store",
   });
 
   if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`n8n webhook error: ${errorBody}`);
+    const text = await response.text().catch(() => "");
+    console.error("n8n classify-draft error", response.status, text);
+    throw new Error("Failed to get classification/draft from n8n");
   }
 
-  const data = (await response.json()) as N8nWebhookResponse;
-  if (!data.replyText) {
-    throw new Error("n8n response missing replyText");
+  const data = (await response.json()) as N8nClassifyDraftResponse;
+  if (!data || typeof data.draftReply !== "string") {
+    console.error("Invalid response from n8n", data);
+    throw new Error("Invalid response from n8n");
   }
 
-  return {
-    replyText: data.replyText,
-    send: data.send ?? false,
-  };
+  return data;
 }

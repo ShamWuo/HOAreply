@@ -116,21 +116,21 @@ export default async function DashboardPage() {
             </div>
           </GlassPanel>
 
-          <div className="flex flex-col gap-4 rounded-[36px] border border-white/60 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6 text-white shadow-[0_45px_120px_rgba(15,23,42,0.4)]">
+          <div className="flex flex-col gap-4 rounded-[36px] border border-white/40 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900/90 p-6 text-white shadow-[0_45px_120px_rgba(15,23,42,0.35)]">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.45em] text-white/70">Create new HOA</p>
-              <h3 className="mt-3 text-2xl font-semibold">Spin up a concierge inbox in minutes</h3>
-              <p className="mt-2 text-sm text-white/70">Provision Gmail, sync CC&Rs into AI copilots, and notify your n8n flows.</p>
+              <h3 className="mt-3 text-2xl font-semibold text-white">Spin up a concierge inbox in minutes</h3>
+              <p className="mt-2 text-sm text-white/75">Provision Gmail, sync CC&Rs into AI copilots, and notify your n8n flows.</p>
             </div>
-            <div className="rounded-[28px] border border-white/15 bg-white/5 p-4 text-sm text-white/80">
+            <div className="rounded-[28px] border border-white/12 bg-white/6 p-4 text-sm text-white/85">
               <p className="text-xs uppercase tracking-[0.4em] text-white/60">Playbook</p>
               <ul className="mt-3 space-y-2 text-sm">
-                <li>1 — Name the HOA and invite operators.</li>
-                <li>2 — Run Google OAuth to link Gmail.</li>
-                <li>3 — Pipe threads into your n8n webhook.</li>
+                <li>1 ? Name the HOA and invite operators.</li>
+                <li>2 ? Run Google OAuth to link Gmail.</li>
+                <li>3 ? Pipe threads into your n8n webhook.</li>
               </ul>
             </div>
-            <div className="rounded-[30px] border border-white/20 bg-white/10 p-5 backdrop-blur">
+            <div className="rounded-[30px] border border-white/15 bg-white/8 p-5 backdrop-blur">
               <CreateHoaForm />
             </div>
           </div>

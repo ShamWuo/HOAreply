@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { pollAllGmailAccounts } from "@/lib/jobs/gmail-poller";
+import { runGmailPollJob } from "@/lib/jobs/gmail-poller";
 import { env } from "@/lib/env";
 import { logError, logInfo } from "@/lib/logger";
 
@@ -12,8 +12,13 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const results = await pollAllGmailAccounts();
-  logInfo("poll-gmail completed", { accountsProcessed: results.length });
+  const { skipped, summaries, reason } = await runGmailPollJob();
 
-  return NextResponse.json({ results });
+  if (skipped) {
+    logInfo("poll-gmail skipped", { reason });
+    return NextResponse.json({ skipped: true, reason }, { status: 202 });
+  }
+
+  logInfo("poll-gmail completed", { accountsProcessed: summaries.length });
+  return NextResponse.json({ results: summaries, skipped: false });
 }

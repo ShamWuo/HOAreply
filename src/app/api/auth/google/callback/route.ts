@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { exchangeCodeForTokens, fetchGmailProfile } from "@/lib/google-api";
 import { prisma } from "@/lib/prisma";
 import { verifySignedState } from "@/lib/state";
+import { pollGmailAccount } from "@/lib/jobs/gmail-poller";
+import { logError } from "@/lib/logger";
 
 function buildRedirectUrl(request: Request, hoaId: string, status: "success" | "error", message?: string) {
   const base = new URL(`/app/hoa/${hoaId}/inbox`, request.url);
@@ -55,6 +57,12 @@ export async function GET(request: Request) {
         expiryDate,
       },
     });
+
+    try {
+      await pollGmailAccount(state.hoaId);
+    } catch (err) {
+      logError("poll-gmail immediate sync failed", { hoaId: state.hoaId, error: err instanceof Error ? err.message : String(err) });
+    }
 
     return NextResponse.redirect(buildRedirectUrl(request, state.hoaId, "success"));
   } catch (error) {

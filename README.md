@@ -78,6 +78,8 @@ The job is implemented at `POST /api/jobs/poll-gmail`. It can be triggered in th
 - Authenticated request with `x-cron-secret` header when `CRON_SECRET` is set (for GitHub Actions, UptimeRobot, etc.).
 - Future background worker (code is structured so the handler only orchestrates `pollAllGmailAccounts`).
 
+The endpoint now acquires a database-backed lock before processing mailboxes, which prevents overlapping runs across multiple instances. If a run is already in progress the API returns HTTP 202 with `skipped: true` so your scheduler can retry later instead of enqueueing duplicate send attempts.
+
 Example scheduled request (GitHub Actions):
 
 ```yaml
@@ -94,6 +96,10 @@ Example scheduled request (GitHub Actions):
 - `src/components/` – UI primitives (auth forms, HOA forms, landing hero, etc.).
 - `src/app/` – App Router routes (marketing, auth, dashboard, HOA pages, APIs).
 - `prisma/schema.prisma` – Database schema + migrations.
+
+## Operational endpoints
+
+- `GET /api/health` – JSON health report (database connectivity + latency). Responses are never cached and return HTTP 500 when dependencies fail. Point your load balancer or uptime monitor here in production.
 
 ## Development notes
 

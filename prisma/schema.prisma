@@ -84,6 +84,12 @@ model AIReply {
   message   EmailMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
 }
 
+model JobLock {
+  job         String   @id
+  lockedUntil DateTime
+  updatedAt   DateTime @updatedAt
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String

@@ -1,4 +1,5 @@
 import type { AIReply, EmailMessage, EmailThread, GmailAccount } from "@prisma/client";
+import type { HOAEmailInput } from "@/lib/n8n-draft-types";
 import { MessageDirection } from "@prisma/client";
 import { refreshAccessToken, getGmailMessage, listGmailMessages, sendGmailMessage } from "@/lib/google-api";
 import { prisma } from "@/lib/prisma";
@@ -178,4 +179,62 @@ export async function sendGmailReply(params: {
       error: null,
     },
   });
+}
+
+export function buildPlainTextMimeEmail(opts: { to: string; from: string; subject: string; body: string }) {
+  const { to, from, subject, body } = opts;
+
+  return [
+    `To: ${to}`,
+    `From: ${from}`,
+    `Subject: ${subject}`,
+    "MIME-Version: 1.0",
+    'Content-Type: text/plain; charset="UTF-8"',
+    "",
+    body,
+  ].join("\r\n");
+}
+
+export async function createGmailDraftForManager(params: {
+  account: GmailAccount;
+  originalEmail: HOAEmailInput;
+  managerEmail: string;
+  draftBody: string;
+}) {
+  const freshAccount = await ensureAccessToken(params.account);
+  const subject = params.originalEmail.subject?.startsWith("Re:")
+    ? params.originalEmail.subject
+    : `Re: ${params.originalEmail.subject}`;
+
+  const rawMime = buildPlainTextMimeEmail({
+    to: params.originalEmail.from,
+    from: params.managerEmail,
+    subject,
+    body: params.draftBody,
+  });
+
+  const encoded = Buffer.from(rawMime)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+
+  const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/drafts", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${freshAccount.accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message: {
+        raw: encoded,
+        threadId: params.originalEmail.threadId,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    throw new Error(`Failed to create Gmail draft: ${response.status} ${errorText}`);
+  }
 }

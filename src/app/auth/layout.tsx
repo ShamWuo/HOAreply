@@ -8,11 +8,11 @@ export default function AuthLayout({
 }) {
   return (
     <div className="relative min-h-screen bg-slate-50">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.12),_transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(37,99,235,0.14),transparent_40%),radial-gradient(circle_at_80%_0%,rgba(59,130,246,0.1),transparent_35%)]" />
       <div className="relative flex min-h-screen flex-col">
         <LandingNavbar />
         <main className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-10 px-4 pb-20 pt-12 md:grid-cols-[1.1fr_0.9fr] md:px-6">
-          <section className="hidden rounded-[40px] border border-white/40 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-10 text-white shadow-[0_45px_140px_rgba(15,23,42,0.5)] md:flex md:flex-col md:justify-between">
+          <section className="hidden rounded-[40px] border border-white/40 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-10 text-white shadow-[0_45px_140px_rgba(15,23,42,0.45)] md:flex md:flex-col md:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.35em] text-white/70">Ops leaders</p>
               <h2 className="mt-3 text-4xl font-semibold leading-tight">
