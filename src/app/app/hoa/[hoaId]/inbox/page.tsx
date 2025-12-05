@@ -13,6 +13,44 @@ interface InboxPageProps {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function linkify(text: string) {
+  const urlRegex = /(https?:\/\/[^\s<]+)/gi;
+  return text.replace(
+    urlRegex,
+    (match) => `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">${match}</a>`,
+  );
+}
+
+function sanitizeHtml(html: string) {
+  return (
+    html
+      // Strip scripts
+      .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+      // Drop inline event handlers
+      .replace(/\son\w+="[^"]*"/gi, "")
+      .replace(/\son\w+='[^']*'/gi, "")
+  );
+}
+
+function buildMessageHtml(message: { bodyHtml: string | null; bodyText: string }) {
+  if (message.bodyHtml && message.bodyHtml.trim()) {
+    return sanitizeHtml(message.bodyHtml);
+  }
+
+  const escaped = escapeHtml(message.bodyText ?? "");
+  const linked = linkify(escaped);
+  return linked.replace(/\n/g, "<br />");
+}
+
 async function fetchThreads(hoaId: string) {
   return prisma.emailThread.findMany({
     where: { hoaId },
@@ -81,12 +119,17 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         : "border-slate-100 bg-white/80 text-slate-600 hover:border-blue-200 hover:bg-white",
                     )}
                   >
-                    <p className={cn("text-base font-semibold", isActive ? "text-white" : "text-slate-900")}>{thread.subject}</p>
+                    <p className={cn("text-base font-semibold", isActive ? "text-white" : "text-slate-900")}>
+                      {thread.subject}
+                    </p>
                     {lastMessage ? (
                       <p className={isActive ? "text-xs text-white/70" : "text-xs text-slate-400"}>
                         {lastMessage.direction === MessageDirection.INCOMING ? lastMessage.from : lastMessage.to}
                       </p>
                     ) : null}
+                    <p className={isActive ? "text-[11px] text-white/60" : "text-[11px] text-slate-400"}>
+                      {thread.messages.length} {thread.messages.length === 1 ? "message" : "messages"}
+                    </p>
                     {badge ? (
                       <span
                         className={cn(
@@ -147,7 +190,10 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           {message.direction === MessageDirection.INCOMING ? "Incoming" : "Outgoing"}
                         </p>
                       </div>
-                      <p className="mt-3 whitespace-pre-line text-sm text-slate-600">{message.bodyText}</p>
+                      <div
+                        className="prose prose-sm mt-3 max-w-none text-slate-700 prose-a:text-blue-600 prose-a:underline"
+                        dangerouslySetInnerHTML={{ __html: buildMessageHtml(message) }}
+                      />
                       {message.aiReply ? (
                         <div
                           className={cn(

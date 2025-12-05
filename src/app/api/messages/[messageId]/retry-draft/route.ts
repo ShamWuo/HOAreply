@@ -71,7 +71,11 @@ export async function POST(_: Request, { params }: { params: Promise<{ messageId
     }
 
     logInfo("retry-draft success", { messageId: message.id, threadId: message.threadId, sent: webhookResponse.send });
-    return NextResponse.redirect(`/app/hoa/${message.thread.hoaId}/inbox?thread=${message.threadId}`);
+    const successUrl = new URL(
+      `/app/hoa/${message.thread.hoaId}/inbox?thread=${message.threadId}`,
+      process.env.APP_BASE_URL ?? "http://localhost:3000",
+    );
+    return NextResponse.redirect(successUrl);
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     logError("retry-draft failed", { messageId, error: errMsg });
@@ -90,6 +94,10 @@ export async function POST(_: Request, { params }: { params: Promise<{ messageId
       },
     });
 
-    return NextResponse.redirect(`/app/hoa/${message.thread.hoaId}/inbox?thread=${message.threadId}&message=${encodeURIComponent(errMsg)}`);
+    const failureUrl = new URL(
+      `/app/hoa/${message.thread.hoaId}/inbox?thread=${message.threadId}&message=${encodeURIComponent(errMsg)}`,
+      process.env.APP_BASE_URL ?? "http://localhost:3000",
+    );
+    return NextResponse.redirect(failureUrl);
   }
 }
