@@ -24,6 +24,15 @@ export interface N8nWebhookResponse {
   send?: boolean;
 }
 
+function safeParseJson<T>(body: string | null): T | null {
+  if (!body) return null;
+  try {
+    return JSON.parse(body) as T;
+  } catch {
+    return null;
+  }
+}
+
 export async function callN8nWebhook(payload: N8nWebhookPayload) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
@@ -45,12 +54,7 @@ export async function callN8nWebhook(payload: N8nWebhookPayload) {
       throw new Error(`n8n webhook error (${response.status}): ${rawBody || "empty response"}`);
     }
 
-    let data: N8nWebhookResponse | null = null;
-    try {
-      data = rawBody ? (JSON.parse(rawBody) as N8nWebhookResponse) : null;
-    } catch {
-      throw new Error(`n8n webhook returned invalid JSON: ${rawBody || "empty body"}`);
-    }
+    const data = safeParseJson<N8nWebhookResponse>(rawBody);
 
     if (!data || typeof data.replyText !== "string" || data.replyText.trim().length === 0) {
       throw new Error(`n8n response missing replyText: ${rawBody || "empty body"}`);

@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/session-provider";
-import { PrivacyBanner } from "@/components/ui/privacy-banner";
 import { cn } from "@/lib/utils";
 import { baseMetadata } from "@/lib/seo";
 import { SiteHeader } from "@/components/layout/site-header";
@@ -49,7 +48,6 @@ export default function RootLayout({
           <div className="relative flex min-h-screen flex-col">
             <AuthProvider>
               <SiteHeader />
-              <PrivacyBanner />
               <main className="flex-1">{children}</main>
             </AuthProvider>
             <SiteFooter />

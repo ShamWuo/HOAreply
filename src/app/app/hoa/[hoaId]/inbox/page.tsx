@@ -92,9 +92,19 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                 <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Threads</p>
                 <p className="text-sm text-slate-500">{threads.length} conversations</p>
               </div>
-              <Link href="/app/dashboard" className={pillButtonClasses({ variant: "secondary", size: "sm" })}>
-                Dashboard
-              </Link>
+              <div className="flex gap-2">
+                <form action={`/api/hoas/${resolvedParams.hoaId}/poll`} method="post">
+                  <button
+                    type="submit"
+                    className={pillButtonClasses({ variant: "primary", size: "sm" })}
+                  >
+                    Refresh inbox
+                  </button>
+                </form>
+                <Link href="/app/dashboard" className={pillButtonClasses({ variant: "secondary", size: "sm" })}>
+                  Dashboard
+                </Link>
+              </div>
             </div>
             <div className="mt-6 space-y-3">
               {threads.map((thread) => {
@@ -133,12 +143,12 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                     {badge ? (
                       <span
                         className={cn(
-                          "mt-3 inline-flex items-center rounded-full px-3 py-0.5 text-[10px] font-semibold uppercase tracking-[0.35em]",
+                          "mt-3 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em]",
                           lastMessage?.aiReply?.error
-                            ? "bg-red-500/20 text-red-100"
+                            ? "bg-red-600 text-white"
                             : isActive
                               ? "bg-white/20 text-white"
-                              : "bg-slate-900/80 text-white",
+                              : "bg-slate-900 text-white",
                         )}
                       >
                         {badge}

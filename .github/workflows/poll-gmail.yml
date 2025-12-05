@@ -1,0 +1,25 @@
+name: Poll Gmail
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call poll-gmail endpoint
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_BASE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_BASE_URL and CRON_SECRET must be set as GitHub secrets" >&2
+            exit 1
+          fi
+          echo "Posting to $APP_BASE_URL/api/jobs/poll-gmail"
+          curl -s -X POST "$APP_BASE_URL/api/jobs/poll-gmail" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H "Content-Length: 0" \
+            -f || exit 1
