@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { assertHoaOwnership } from "@/lib/hoa";
 import { MessageDirection } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
-import { pillButtonClasses } from "@/components/ui/pill-button";
 import { cn } from "@/lib/utils";
 
 interface InboxPageProps {
@@ -26,7 +25,8 @@ function linkify(text: string) {
   const urlRegex = /(https?:\/\/[^\s<]+)/gi;
   return text.replace(
     urlRegex,
-    (match) => `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">${match}</a>`,
+    (match) =>
+      `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">${match}</a>`,
   );
 }
 
@@ -35,6 +35,12 @@ function sanitizeHtml(html: string) {
     html
       // Strip scripts
       .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, "")
+      // Strip style and link tags to prevent font/layout overrides
+      .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
+      .replace(/<link[\s\S]*?>/gi, "")
+      // Drop inline styles
+      .replace(/\sstyle="[^"]*"/gi, "")
+      .replace(/\sstyle='[^']*'/gi, "")
       // Drop inline event handlers
       .replace(/\son\w+="[^"]*"/gi, "")
       .replace(/\son\w+='[^']*'/gi, "")
@@ -76,7 +82,8 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
 
   await assertHoaOwnership(resolvedParams.hoaId, session.user.id);
   const threads = await fetchThreads(resolvedParams.hoaId);
-  const requestedThreadId = typeof resolvedSearchParams?.thread === "string" ? resolvedSearchParams.thread : undefined;
+  const requestedThreadId =
+    typeof resolvedSearchParams?.thread === "string" ? resolvedSearchParams.thread : undefined;
   const activeThread = threads.find((thread) => thread.id === requestedThreadId) ?? threads[0];
   const success = Boolean(resolvedSearchParams?.success);
   const errorMsg = resolvedSearchParams?.message;
@@ -89,19 +96,22 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
           <GlassPanel className="h-full p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Threads</p>
-                <p className="text-sm text-slate-500">{threads.length} conversations</p>
+                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Threads</p>
+                <p className="text-xs text-slate-500">{threads.length} conversations</p>
               </div>
               <div className="flex gap-2">
                 <form action={`/api/hoas/${resolvedParams.hoaId}/poll`} method="post">
                   <button
                     type="submit"
-                    className={pillButtonClasses({ variant: "primary", size: "sm" })}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:text-slate-900"
                   >
-                    Refresh inbox
+                    Refresh
                   </button>
                 </form>
-                <Link href="/app/dashboard" className={pillButtonClasses({ variant: "secondary", size: "sm" })}>
+                <Link
+                  href="/app/dashboard"
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:text-slate-900"
+                >
                   Dashboard
                 </Link>
               </div>
@@ -164,17 +174,17 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
         <main className="flex-1">
           <GlassPanel className="h-full p-6">
             {success ? (
-              <div className="mb-4 rounded-[26px] border border-emerald-200/60 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700">
+              <div className="mb-4 rounded-[20px] border border-emerald-200/60 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700">
                 Gmail connected successfully.
               </div>
             ) : null}
             {errorMsg ? (
-              <div className="mb-4 rounded-[26px] border border-red-200/60 bg-red-50/90 px-4 py-3 text-sm text-red-700">
+              <div className="mb-4 rounded-[20px] border border-red-200/60 bg-red-50/90 px-4 py-3 text-sm text-red-700">
                 {errorMsg}
               </div>
             ) : null}
             {!activeThread ? (
-              <div className="rounded-[32px] border border-dashed border-slate-200 bg-slate-50/80 p-10 text-center text-sm text-slate-500">
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-10 text-center text-sm text-slate-500">
                 No messages yet. Emails will show up here after the next Gmail poll.
               </div>
             ) : (
@@ -187,7 +197,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                   {activeThread.messages.map((message) => (
                     <div
                       key={message.id}
-                      className="rounded-[30px] border border-slate-100 bg-white/95 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)]"
+                      className="rounded-2xl border border-slate-100 bg-white/95 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.08)]"
                     >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
@@ -207,7 +217,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       {message.aiReply ? (
                         <div
                           className={cn(
-                            "mt-4 rounded-[24px] border px-4 py-3 text-sm",
+                            "mt-4 rounded-xl border px-4 py-3 text-sm",
                             message.aiReply.error
                               ? "border-red-300 bg-red-50/90 text-red-900"
                               : "border-blue-100 bg-blue-50/80 text-slate-700",
@@ -216,32 +226,64 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <p className="font-semibold">
                               AI Reply
-                              {message.aiReply.sent ? " • Sent" : message.aiReply.error ? " • Error" : " • Pending"}
+                              {message.aiReply.sent ? " › Sent" : message.aiReply.error ? " › Error" : " › Pending"}
                             </p>
-                            {message.aiReply.error ? (
-                              <form action={`/api/messages/${message.id}/retry-draft`} method="post">
-                                <button
-                                  type="submit"
-                                  className="inline-flex items-center gap-1 rounded-full border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-700 transition hover:border-red-400 hover:bg-red-100"
-                                >
-                                  Retry draft
-                                </button>
-                              </form>
-                            ) : null}
+                            <div className="flex flex-wrap gap-2">
+                              {message.aiReply.error ? (
+                                <form action={`/api/messages/${message.id}/retry-draft`} method="post">
+                                  <button
+                                    type="submit"
+                                    className="inline-flex items-center gap-1 rounded-xl border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-700 transition hover:border-red-400 hover:bg-red-100"
+                                  >
+                                    Retry draft
+                                  </button>
+                                </form>
+                              ) : null}
+                              {!message.aiReply.sent ? (
+                                <form action={`/api/messages/${message.id}/send`} method="post">
+                                  <button
+                                    type="submit"
+                                    className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-blue-500"
+                                  >
+                                    Send
+                                  </button>
+                                </form>
+                              ) : null}
+                            </div>
                           </div>
-                          <p className="mt-2 whitespace-pre-line text-sm">
-                            {message.aiReply.replyText || "No draft"}
-                          </p>
+                          <form action={`/api/messages/${message.id}/draft`} method="post" className="mt-3 space-y-2">
+                            <textarea
+                              name="replyText"
+                              defaultValue={message.aiReply.replyText || ""}
+                              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                              rows={6}
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                type="submit"
+                                className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 hover:text-slate-900"
+                              >
+                                Save draft
+                              </button>
+                              {!message.aiReply.sent ? (
+                                <form action={`/api/messages/${message.id}/send`} method="post">
+                                  <button
+                                    type="submit"
+                                    className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-500"
+                                  >
+                                    Send
+                                  </button>
+                                </form>
+                              ) : null}
+                            </div>
+                          </form>
                           {message.aiReply.error ? (
-                            <p className="mt-2 text-sm font-semibold text-red-800">{message.aiReply.error}</p>
+                            <p className="text-sm font-semibold text-red-800">{message.aiReply.error}</p>
                           ) : null}
                         </div>
                       ) : null}
                     </div>
                   ))}
-                </div>
-                <div className="rounded-[32px] border border-dashed border-slate-200 bg-slate-50/80 p-6 text-center text-sm text-slate-500">
-                  Manual compose coming soon.
                 </div>
               </div>
             )}
