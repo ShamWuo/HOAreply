@@ -149,22 +149,35 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       </div>
                       <p className="mt-3 whitespace-pre-line text-sm text-slate-600">{message.bodyText}</p>
                       {message.aiReply ? (
-                        <div className="mt-4 rounded-[24px] border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm text-slate-700">
-                          <div className="flex items-center justify-between">
-                            <p className="font-semibold text-blue-900">AI Reply</p>
-                            <p className="text-[10px] uppercase tracking-[0.35em] text-blue-500">
-                              {message.aiReply.error
-                                ? "Error"
-                                : message.aiReply.sent
-                                  ? "Sent"
-                                  : "Pending"}
+                        <div
+                          className={cn(
+                            "mt-4 rounded-[24px] border px-4 py-3 text-sm",
+                            message.aiReply.error
+                              ? "border-red-300 bg-red-50/90 text-red-900"
+                              : "border-blue-100 bg-blue-50/80 text-slate-700",
+                          )}
+                        >
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <p className="font-semibold">
+                              AI Reply
+                              {message.aiReply.sent ? " • Sent" : message.aiReply.error ? " • Error" : " • Pending"}
                             </p>
+                            {message.aiReply.error ? (
+                              <form action={`/api/messages/${message.id}/retry-draft`} method="post">
+                                <button
+                                  type="submit"
+                                  className="inline-flex items-center gap-1 rounded-full border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-700 transition hover:border-red-400 hover:bg-red-100"
+                                >
+                                  Retry draft
+                                </button>
+                              </form>
+                            ) : null}
                           </div>
-                          <p className="mt-2 whitespace-pre-line text-sm text-slate-700">
+                          <p className="mt-2 whitespace-pre-line text-sm">
                             {message.aiReply.replyText || "No draft"}
                           </p>
                           {message.aiReply.error ? (
-                            <p className="mt-2 text-xs text-red-600">{message.aiReply.error}</p>
+                            <p className="mt-2 text-sm font-semibold text-red-800">{message.aiReply.error}</p>
                           ) : null}
                         </div>
                       ) : null}
