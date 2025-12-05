@@ -5,11 +5,11 @@ import { getClassificationAndDraftFromN8n } from "@/lib/n8n";
 import { createGmailDraftForManager } from "@/lib/gmail";
 import type { HOAEmailInput, HOAManagerContext } from "@/lib/n8n-draft-types";
 
-type GenerateDraftParams = {
-  params: { id: string };
-};
-
-export async function POST(_req: NextRequest, { params }: GenerateDraftParams) {
+export async function POST(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
 
   const session = await auth();
   if (!session?.user?.id) {
@@ -18,7 +18,7 @@ export async function POST(_req: NextRequest, { params }: GenerateDraftParams) {
 
   try {
     const email = await prisma.emailMessage.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         thread: {
           include: {
@@ -88,7 +88,7 @@ export async function POST(_req: NextRequest, { params }: GenerateDraftParams) {
   } catch (error) {
     console.error("generate-draft error", {
       error,
-      emailId: params.id,
+      emailId: id,
       userId: session.user.id,
     });
     return new NextResponse("Failed to generate draft", { status: 500 });
