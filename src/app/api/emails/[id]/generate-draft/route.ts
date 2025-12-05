@@ -5,12 +5,10 @@ import { getClassificationAndDraftFromN8n } from "@/lib/n8n";
 import { createGmailDraftForManager } from "@/lib/gmail";
 import type { HOAEmailInput, HOAManagerContext } from "@/lib/n8n-draft-types";
 
-type GenerateDraftContext = {
-  params: { id: string };
-};
-
-export async function POST(_req: NextRequest, context: GenerateDraftContext) {
-  const { params } = context;
+export async function POST(
+  _req: NextRequest,
+  { params }: { params: { id: string } },
+) {
   const session = await auth();
   if (!session?.user?.id) {
     return new NextResponse("Unauthorized", { status: 401 });
@@ -33,35 +31,49 @@ export async function POST(_req: NextRequest, context: GenerateDraftContext) {
       },
     });
 
-    if (!email || email.thread.hoa.userId !== session.user.id) {
+    if (!email || !email.thread || !email.thread.hoa) {
       return new NextResponse("Not found", { status: 404 });
     }
 
-    const gmailAccount = email.thread.hoa.gmailAccount;
+    const { thread } = email;
+    const { hoa } = thread;
+
+    if (hoa.userId !== session.user.id) {
+      return new NextResponse("Not found", { status: 404 });
+    }
+
+    const gmailAccount = hoa.gmailAccount;
     if (!gmailAccount) {
       return new NextResponse("HOA Gmail is not connected", { status: 400 });
+    }
+
+    if (!thread.gmailThreadId) {
+      return new NextResponse("Original email is missing Gmail thread id", {
+        status: 400,
+      });
     }
 
     const emailInput: HOAEmailInput = {
       from: email.from,
       to: email.to,
-      subject: email.thread.subject,
+      subject: thread.subject,
       body: email.bodyText,
       receivedAt: email.receivedAt.toISOString(),
       messageId: email.gmailMessageId ?? email.id,
-      threadId: email.thread.gmailThreadId,
+      threadId: thread.gmailThreadId,
     };
 
     const managerContext: HOAManagerContext = {
-      hoaName: email.thread.hoa.name,
+      hoaName: hoa.name,
       managerName: session.user.name ?? session.user.email ?? "Manager",
       managerEmail: gmailAccount.email,
     };
 
-    const { draftReply, classification, email: echoedEmail } = await getClassificationAndDraftFromN8n(
-      emailInput,
-      managerContext,
-    );
+    const {
+      draftReply,
+      classification,
+      email: echoedEmail,
+    } = await getClassificationAndDraftFromN8n(emailInput, managerContext);
 
     await createGmailDraftForManager({
       account: gmailAccount,
@@ -72,7 +84,11 @@ export async function POST(_req: NextRequest, context: GenerateDraftContext) {
 
     return NextResponse.json({ ok: true, classification });
   } catch (error) {
-    console.error("generate-draft error", error);
+    console.error("generate-draft error", {
+      error,
+      emailId: params.id,
+      userId: session.user.id,
+    });
     return new NextResponse("Failed to generate draft", { status: 500 });
   }
 }
