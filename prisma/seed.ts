@@ -7,10 +7,10 @@ async function main() {
   const passwordHash = await bcrypt.hash("changeme", 12);
 
   const user = await prisma.user.upsert({
-    where: { email: "demo@boardinbox.ai" },
+    where: { email: "demo@hoareply.ai" },
     update: {},
     create: {
-      email: "demo@boardinbox.ai",
+      email: "demo@hoareply.ai",
       name: "Demo Manager",
       passwordHash,
     },
@@ -40,7 +40,7 @@ async function main() {
           create: {
             direction: MessageDirection.INCOMING,
             from: "resident@example.com",
-            to: "demo@boardinbox.ai",
+            to: "demo@hoareply.ai",
             bodyText: "Hi there, can I grab a new pool key?",
             receivedAt: new Date(),
           },
@@ -49,7 +49,7 @@ async function main() {
     });
   }
 
-  console.log("Seed data ready - demo user: demo@boardinbox.ai / changeme");
+  console.log("Seed data ready - demo user: demo@hoareply.ai / changeme");
 }
 
 main()

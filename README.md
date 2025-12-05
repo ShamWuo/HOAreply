@@ -1,6 +1,6 @@
-# BoardInbox AI Connect
+# HOA Reply AI Connect
 
-BoardInbox AI Connect is a production-ready SaaS starter that lets HOA managers connect their Gmail inboxes, normalize messages, send them to an existing n8n flow, and reply directly from a unified dashboard.
+HOA Reply AI Connect is a production-ready SaaS starter that lets HOA managers connect their Gmail inboxes, normalize messages, send them to an existing n8n flow, and reply directly from a unified dashboard.
 
 ## Stack
 

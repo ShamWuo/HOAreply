@@ -55,7 +55,7 @@ export default function AuthLayout({
           </section>
           <section className="rounded-[32px] border border-slate-100 bg-white p-8 shadow-[0_30px_90px_rgba(15,23,42,0.12)]">
             <div className="mb-8 space-y-2 text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">BoardInbox AI Connect</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">HOA Reply AI Connect</p>
               <h1 className="text-3xl font-semibold text-slate-900">Authenticate your workspace</h1>
               <p className="text-sm text-slate-500">Secure Gmail and n8n automation bridge for HOA boards.</p>
             </div>

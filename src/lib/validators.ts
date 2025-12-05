@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const signupSchema = z.object({
-  name: z.string().trim().min(2).max(120),
+  name: z.string().trim().min(2).max(120).optional(),
   email: z.string().trim().email().toLowerCase(),
   password: z.string().min(8).max(128),
 });

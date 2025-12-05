@@ -2,7 +2,10 @@ import Link from "next/link";
 
 export function LandingHero() {
   return (
-    <section id="hero" className="hero-animated relative overflow-hidden rounded-[32px] border border-white/60 px-6 py-16 shadow-[0_45px_120px_rgba(15,23,42,0.12)] sm:px-14">
+    <section
+      id="hero"
+      className="hero-animated relative overflow-hidden rounded-[32px] border border-white/60 px-6 py-16 shadow-[0_45px_120px_rgba(15,23,42,0.12)] sm:px-14"
+    >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.12),_transparent_55%)]" />
       <div className="relative grid gap-12 lg:grid-cols-2 lg:items-center">
         <div className="space-y-8 animate-fade-up">
@@ -11,37 +14,32 @@ export function LandingHero() {
           </div>
           <div>
             <h1 className="text-4xl font-bold leading-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              Stop drowning in resident emails.
+              Automate HOA inbox triage with Gmail in 5 minutes.
             </h1>
             <p className="mt-4 text-lg text-slate-600">
-              Your Gmail stays the source of truth. AI reads every message, sorts it, drafts the reply, and you approve with one click.
+              AI reads every resident email, classifies it, drafts the reply, and you approve with one click. Your Gmail stays the source of truth.
             </p>
-            <p className="mt-3 text-sm text-slate-600">Cut reply time by 40-60% in the first week.</p>
+            <p className="mt-3 text-sm text-slate-600">Cut reply time by 40–60% in the first week.</p>
           </div>
-          <div className="flex flex-col gap-4 sm:flex-row">
+          <div className="flex">
             <Link
               href="/auth/signup"
               className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-7 py-3 text-sm font-semibold text-white shadow-[0_20px_45px_rgba(37,99,235,0.35)] transition hover:from-blue-500 hover:to-blue-500"
             >
-              Start free trial
-            </Link>
-            <Link
-              href="/auth/login"
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 px-7 py-3 text-sm font-semibold text-slate-900 transition hover:border-slate-300"
-            >
-              Book a demo
+              Start free
             </Link>
           </div>
-          <div className="text-sm text-slate-600">
-            No credit card · No lock-in · 10-minute setup
-          </div>
+          <div className="text-sm text-slate-600">No credit card • Secure Google OAuth • 10-minute setup</div>
           <div className="grid gap-6 sm:grid-cols-3">
             {[
               { label: "Replies drafted", value: "Most emails" },
               { label: "Reduction in inbox time", value: "Up to 50%" },
               { label: "Setup time", value: "< 10 minutes" },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-2xl border border-white/70 bg-slate-50/60 px-4 py-3 text-center">
+              <div
+                key={stat.label}
+                className="rounded-2xl border border-white/70 bg-slate-50/60 px-4 py-3 text-center"
+              >
                 <p className="text-2xl font-semibold text-slate-900">{stat.value}</p>
                 <p className="text-xs uppercase tracking-[0.4em] text-slate-500">{stat.label}</p>
               </div>
@@ -54,7 +52,10 @@ export function LandingHero() {
               <p className="text-xs uppercase tracking-[0.4em] text-blue-200/80">Inbox overview</p>
               <div className="mt-4 space-y-4">
                 {["Northshore HOA", "Harbor Point", "Grand Oaks", "Sunset Villas"].map((hoa, index) => (
-                  <div key={hoa} className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-md px-5 py-4 shadow-[0_25px_60px_rgba(9,12,26,0.45)]">
+                  <div
+                    key={hoa}
+                    className="rounded-2xl border border-white/15 bg-white/10 backdrop-blur-md px-5 py-4 shadow-[0_25px_60px_rgba(9,12,26,0.45)]"
+                  >
                     <div className="flex items-center justify-between text-sm text-blue-50">
                       <p className="font-semibold">{hoa}</p>
                       <span className="text-xs text-emerald-300/90">{index === 0 ? "Live" : "Sync"}</span>
@@ -71,7 +72,10 @@ export function LandingHero() {
                       <div className="flex-1">
                         <p className="text-[11px] uppercase tracking-[0.4em] text-blue-200/60">SLA</p>
                         <div className="mt-2 h-2 rounded-full bg-white/20">
-                          <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500" style={{ width: `${70 + index * 6}%` }} />
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500"
+                            style={{ width: `${70 + index * 6}%` }}
+                          />
                         </div>
                       </div>
                     </div>
@@ -82,7 +86,7 @@ export function LandingHero() {
           </div>
           <div className="absolute -right-6 -top-6 hidden rounded-2xl border border-white/30 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-[0_25px_60px_rgba(15,23,42,0.18)] md:block animate-fade-in animate-delay-2">
             <p className="text-xs uppercase tracking-[0.4em] text-slate-400">Workflow</p>
-            <p className="mt-2 font-semibold text-slate-900">Gmail → n8n → AI reply</p>
+            <p className="mt-2 font-semibold text-slate-900">Gmail + n8n + AI reply</p>
             <p className="text-xs text-slate-500">Under 90 seconds</p>
           </div>
         </div>

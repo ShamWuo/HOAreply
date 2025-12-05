@@ -1,6 +1,19 @@
+import Link from "next/link";
+import { JsonLd } from "@/components/seo/json-ld";
 import { LandingHero } from "@/components/landing/hero";
 import { LandingNavbar } from "@/components/landing/navbar";
-import Link from "next/link";
+import { buildMetadata } from "@/lib/seo";
+
+const siteUrl = "https://hoareply.com";
+const privacyUrl = `${siteUrl}/privacy`;
+
+export const generateMetadata = () =>
+  buildMetadata({
+    title: "HOA Reply AI | Automate HOA inbox triage with Gmail in minutes",
+    description:
+      "Connect Gmail, let AI classify and draft replies, and approve with one click. Built for HOA managers and boards who need faster responses.",
+    canonicalPath: "/",
+  });
 
 const pains = [
   "Residents ask the same questions over and over",
@@ -116,6 +129,27 @@ export default function Home() {
     <div className="relative min-h-screen">
       <LandingNavbar />
       <main className="mx-auto flex max-w-6xl flex-col gap-20 px-4 pb-20 pt-16 md:px-6">
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: "HOA Reply AI",
+            description:
+              "HOA Reply AI reads every resident email, classifies it, drafts replies, and keeps Gmail as the source of truth.",
+            brand: {
+              "@type": "Brand",
+              name: "HOA Reply AI",
+            },
+            url: "/",
+            applicationCategory: "BusinessApplication",
+            offers: {
+              "@type": "Offer",
+              price: "59",
+              priceCurrency: "USD",
+              availability: "https://schema.org/InStock",
+            },
+          }}
+        />
         <LandingHero />
 
         <section className="grid gap-6 md:grid-cols-2 animate-fade-up" id="pains">
@@ -133,11 +167,11 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-sm font-semibold text-slate-900">BoardInbox AI fixes the choke point: the inbox.</p>
+            <p className="mt-4 text-sm font-semibold text-slate-900">HOA Reply AI fixes the choke point: the inbox.</p>
           </div>
           <div className="card-tilt rounded-3xl border border-white/60 bg-white/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
             <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">How it works</p>
-            <h3 className="mt-3 text-2xl font-semibold text-slate-900">How BoardInbox AI works</h3>
+            <h3 className="mt-3 text-2xl font-semibold text-slate-900">How HOA Reply AI works</h3>
             <ol className="mt-4 space-y-3 text-sm text-slate-600">
               {howItWorks.map((item, idx) => (
                 <li key={item.step} className="flex items-start gap-3">
@@ -285,7 +319,7 @@ export default function Home() {
               <Link href="/auth/signup" className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900">
                 Start free trial
               </Link>
-              <Link href="mailto:hello@boardinbox.ai" className="inline-flex items-center justify-center rounded-full border border-white/50 px-6 py-3 text-sm font-semibold">
+              <Link href="mailto:hello@hoareply.ai" className="inline-flex items-center justify-center rounded-full border border-white/50 px-6 py-3 text-sm font-semibold">
                 Contact sales
               </Link>
             </div>
@@ -296,9 +330,9 @@ export default function Home() {
       <footer className="border-t border-white/60 bg-white/90">
         <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 text-sm text-slate-600 md:grid-cols-4 md:px-6">
           <div>
-            <p className="text-lg font-semibold text-slate-900">BoardInbox AI</p>
+            <p className="text-lg font-semibold text-slate-900">HOA Reply AI</p>
             <p className="mt-2 text-sm">AI inbox assistant for HOA managers and boards.</p>
-            <p className="mt-2 text-xs text-slate-500">Powered by BoardInbox</p>
+            <p className="mt-2 text-xs text-slate-500">Powered by HOA Reply AI</p>
           </div>
           {[
             {
@@ -317,14 +351,37 @@ export default function Home() {
             <div key={column.title}>
               <p className="text-sm font-semibold text-slate-900">{column.title}</p>
               <ul className="mt-3 space-y-2">
-                {column.links.map((link) => (
-                  <li key={link}>{link}</li>
-                ))}
+                {column.links.map((link) => {
+                  const href =
+                    link === "Privacy"
+                      ? privacyUrl
+                      : link === "Data deletion"
+                      ? `${privacyUrl}#data-deletion`
+                      : link === "Contact"
+                      ? "/#contact"
+                      : link === "Features"
+                      ? "/#features"
+                      : link === "How it works"
+                      ? "/#workflow"
+                      : link === "Pricing"
+                      ? "/#pricing"
+                      : link === "Security"
+                      ? "/#security"
+                      : "#";
+
+                  return (
+                    <li key={link}>
+                      <Link href={href} className="text-slate-600 hover:underline">
+                        {link}
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}
         </div>
-        <div className="border-t border-white/80 py-6 text-center text-xs text-slate-500">© {new Date().getFullYear()} BoardInbox AI. All rights reserved.</div>
+        <div className="border-t border-white/80 py-6 text-center text-xs text-slate-500">© {new Date().getFullYear()} HOA Reply AI. All rights reserved.</div>
       </footer>
     </div>
   );

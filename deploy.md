@@ -1,6 +1,6 @@
 # Deployment & Production Checklist
 
-Use this guide when preparing BoardInbox AI Connect for production.
+Use this guide when preparing HOA Reply AI Connect for production.
 
 ## Required environment variables
 Create a `.env` (or set envs in your host) with these variables. Do NOT commit real values.

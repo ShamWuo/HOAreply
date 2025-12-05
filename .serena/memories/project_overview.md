@@ -1,4 +1,4 @@
-# BoardInbox AI – Project Overview
+# HOA Reply AI – Project Overview
 - **Purpose**: SaaS starter for HOA management companies to connect each board's Gmail inbox, normalize threads, route them through existing n8n automations, and answer inside a unified dashboard with AI assistance.
 - **Key Capabilities**: Google OAuth + Gmail polling, AI draft + audit trail, webhook handoff to n8n, HOA-centric dashboard (dashboard + HOA detail + inbox views), landing + auth flows.
 - **Primary Stack**: Next.js 15 App Router (TypeScript, React 19), Tailwind CSS v4 utility classes, NextAuth (credentials + Google) with Prisma Adapter, Prisma ORM + PostgreSQL, Zod validation, Google APIs + n8n webhooks.
