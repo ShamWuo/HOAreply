@@ -47,8 +47,8 @@ export default function RootLayout({
         <div className="relative min-h-screen bg-white">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.08),_transparent_45%)]" />
           <div className="relative flex min-h-screen flex-col">
-            <SiteHeader />
             <AuthProvider>
+              <SiteHeader />
               <PrivacyBanner />
               <main className="flex-1">{children}</main>
             </AuthProvider>

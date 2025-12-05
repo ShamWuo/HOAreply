@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
 
 const navLinks = [
   { label: "Product", href: "/#features" },
@@ -15,6 +16,8 @@ const navLinks = [
 export function SiteHeader() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { data: session, status } = useSession();
+  const isAuthed = useMemo(() => status === "authenticated" && Boolean(session?.user?.id), [status, session]);
 
   useEffect(() => {
     const handler = () => setIsScrolled(window.scrollY > 12);
@@ -51,18 +54,38 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="hidden items-center gap-3 md:flex">
-          <Link
-            href="/auth/login"
-            className="text-sm font-semibold text-slate-700 transition hover:text-slate-900"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/auth/signup"
-            className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.2)] transition hover:translate-y-0.5"
-          >
-            Start free
-          </Link>
+          {isAuthed ? (
+            <>
+              <Link
+                href="/app/dashboard"
+                className="text-sm font-semibold text-slate-700 transition hover:text-slate-900"
+              >
+                Dashboard
+              </Link>
+              <button
+                type="button"
+                onClick={() => signOut({ callbackUrl: "/" })}
+                className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.2)] transition hover:translate-y-0.5"
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/auth/login"
+                className="text-sm font-semibold text-slate-700 transition hover:text-slate-900"
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/auth/signup"
+                className="rounded-full bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-[0_10px_25px_rgba(15,23,42,0.2)] transition hover:translate-y-0.5"
+              >
+                Start free
+              </Link>
+            </>
+          )}
         </div>
         <button
           type="button"
@@ -98,20 +121,44 @@ export function SiteHeader() {
               ))}
             </nav>
             <div className="mt-6 flex flex-col gap-3">
-              <Link
-                href="/auth/login"
-                className="w-full rounded-full border border-slate-200 px-4 py-2 text-center text-sm font-semibold text-slate-700"
-                onClick={() => setMenuOpen(false)}
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/auth/signup"
-                className="w-full rounded-full bg-slate-900 px-4 py-2 text-center text-sm font-semibold text-white"
-                onClick={() => setMenuOpen(false)}
-              >
-                Start free
-              </Link>
+              {isAuthed ? (
+                <>
+                  <Link
+                    href="/app/dashboard"
+                    className="w-full rounded-full border border-slate-200 px-4 py-2 text-center text-sm font-semibold text-slate-700"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      void signOut({ callbackUrl: "/" });
+                    }}
+                    className="w-full rounded-full bg-slate-900 px-4 py-2 text-center text-sm font-semibold text-white"
+                  >
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/auth/login"
+                    className="w-full rounded-full border border-slate-200 px-4 py-2 text-center text-sm font-semibold text-slate-700"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/auth/signup"
+                    className="w-full rounded-full bg-slate-900 px-4 py-2 text-center text-sm font-semibold text-white"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Start free
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

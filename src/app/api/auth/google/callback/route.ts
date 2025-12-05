@@ -41,7 +41,7 @@ export async function GET(request: Request) {
 
     const expiryDate = new Date(Date.now() + tokens.expiresIn * 1000 - 60 * 1000);
 
-    await prisma.gmailAccount.upsert({
+    const gmailAccount = await prisma.gmailAccount.upsert({
       where: { hoaId: state.hoaId },
       update: {
         email: gmailProfile.emailAddress,
@@ -59,7 +59,7 @@ export async function GET(request: Request) {
     });
 
     try {
-      await pollGmailAccount(state.hoaId);
+      await pollGmailAccount(gmailAccount.id);
     } catch (err) {
       logError("poll-gmail immediate sync failed", { hoaId: state.hoaId, error: err instanceof Error ? err.message : String(err) });
     }
