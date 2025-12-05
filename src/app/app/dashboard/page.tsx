@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { listUserHoas } from "@/lib/hoa";
 import { CreateHoaForm } from "@/components/hoa/create-hoa-form";
 import { SignOutButton } from "@/components/auth/signout-button";
 import { GlassPanel } from "@/components/ui/glass-panel";
-import { pillButtonClasses } from "@/components/ui/pill-button";
+import { HoaCardControls } from "@/components/hoa/hoa-card-controls";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -96,20 +95,12 @@ export default async function DashboardPage() {
                         <span className="text-slate-400">ID {hoa.id.slice(0, 6)}</span>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Link
-                        href={`/app/hoa/${hoa.id}`}
-                        className={pillButtonClasses({ variant: "secondary", size: "sm" })}
-                      >
-                        Details
-                      </Link>
-                      <Link
-                        href={`/app/hoa/${hoa.id}/inbox`}
-                        className={pillButtonClasses({ variant: "primary", size: "sm" })}
-                      >
-                        Inbox
-                      </Link>
-                    </div>
+                    <HoaCardControls
+                      hoaId={hoa.id}
+                      initialName={hoa.name}
+                      detailsUrl={`/app/hoa/${hoa.id}`}
+                      inboxUrl={`/app/hoa/${hoa.id}/inbox`}
+                    />
                   </div>
                 ))
               )}

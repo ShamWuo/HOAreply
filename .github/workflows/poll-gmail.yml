@@ -8,6 +8,7 @@ on:
 jobs:
   poll:
     runs-on: ubuntu-latest
+    environment: Production
     steps:
       - name: Call poll-gmail endpoint
         env:

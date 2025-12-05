@@ -2,6 +2,8 @@ import { env } from "@/lib/env";
 import type { HOAEmailInput, HOAManagerContext, N8nClassifyDraftResponse } from "@/lib/n8n-draft-types";
 
 const WEBHOOK_TIMEOUT_MS = 10_000;
+const FALLBACK_DRAFT =
+  "Draft unavailable from automation. Please review and send manually.";
 
 export interface N8nWebhookPayload {
   hoaId: string;
@@ -65,6 +67,10 @@ export async function callN8nWebhook(payload: N8nWebhookPayload) {
       throw new Error(`n8n webhook error (${response.status}): ${rawBody || "empty response"}`);
     }
 
+    if (!rawBody) {
+      return { replyText: FALLBACK_DRAFT, send: false };
+    }
+
     const parsed = safeParseJson<unknown>(rawBody);
 
     // Handle array-of-log-object responses
@@ -72,14 +78,14 @@ export async function callN8nWebhook(payload: N8nWebhookPayload) {
       const first = parsed[0] as N8nLogItem;
       const replyText = first.logReplyDraft ?? first.output;
       if (!replyText || typeof replyText !== "string" || !replyText.trim()) {
-        throw new Error(`n8n response missing replyText: ${rawBody || "empty body"}`);
+        return { replyText: FALLBACK_DRAFT, send: false };
       }
       return { replyText, send: false };
     }
 
     const data = parsed as N8nWebhookResponse | null;
     if (!data || typeof data.replyText !== "string" || data.replyText.trim().length === 0) {
-      throw new Error(`n8n response missing replyText: ${rawBody || "empty body"}`);
+      return { replyText: FALLBACK_DRAFT, send: false };
     }
 
     return {

@@ -50,7 +50,7 @@ export function CreateHoaForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <label htmlFor="name" className="text-xs font-semibold uppercase tracking-[0.35em] text-white/70">
+        <label htmlFor="name" className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">
           HOA Name
         </label>
         <input
@@ -58,23 +58,23 @@ export function CreateHoaForm() {
           name="name"
           type="text"
           placeholder="e.g. Lakeside Townhomes"
-          className="w-full rounded-2xl border border-white/25 bg-white/8 px-4 py-3 text-sm text-white placeholder:text-white/60 shadow-[0_15px_35px_rgba(0,0,0,0.28)] transition focus:border-white focus:outline-none focus:ring-2 focus:ring-blue-200/60"
+          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 shadow-[0_12px_30px_rgba(15,23,42,0.12)] transition focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
         />
       </div>
       {error ? (
-        <p className="rounded-2xl border border-red-200/40 bg-red-500/20 px-4 py-2 text-sm text-red-100" aria-live="polite">
+        <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700" aria-live="polite">
           {error}
         </p>
       ) : null}
       {success ? (
-        <p className="rounded-2xl border border-emerald-200/40 bg-emerald-500/20 px-4 py-2 text-sm text-emerald-100" aria-live="polite">
+        <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700" aria-live="polite">
           {success}
         </p>
       ) : null}
       <button
         type="submit"
         disabled={isSubmitting}
-        className={pillButtonClasses({ variant: "light", className: "w-full" })}
+        className={pillButtonClasses({ variant: "primary", className: "w-full cursor-pointer" })}
       >
         {isSubmitting ? "Creating..." : "Create HOA"}
       </button>
