@@ -39,14 +39,21 @@ export async function callN8nWebhook(payload: N8nWebhookPayload) {
       signal: controller.signal,
     });
 
+    const rawBody = await response.text();
+
     if (!response.ok) {
-      const errorBody = await response.text();
-      throw new Error(`n8n webhook error (${response.status}): ${errorBody}`);
+      throw new Error(`n8n webhook error (${response.status}): ${rawBody || "empty response"}`);
     }
 
-    const data = (await response.json()) as N8nWebhookResponse;
-    if (typeof data.replyText !== "string" || data.replyText.trim().length === 0) {
-      throw new Error("n8n response missing replyText");
+    let data: N8nWebhookResponse | null = null;
+    try {
+      data = rawBody ? (JSON.parse(rawBody) as N8nWebhookResponse) : null;
+    } catch {
+      throw new Error(`n8n webhook returned invalid JSON: ${rawBody || "empty body"}`);
+    }
+
+    if (!data || typeof data.replyText !== "string" || data.replyText.trim().length === 0) {
+      throw new Error(`n8n response missing replyText: ${rawBody || "empty body"}`);
     }
 
     return {
