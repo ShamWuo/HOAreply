@@ -116,24 +116,26 @@ export default async function DashboardPage() {
             </div>
           </GlassPanel>
 
-          <div className="flex flex-col gap-4 rounded-[36px] border border-white/40 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900/90 p-6 text-white shadow-[0_45px_120px_rgba(15,23,42,0.35)]">
+          <GlassPanel className="flex flex-col gap-5 p-6">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.45em] text-white/70">Create new HOA</p>
-              <h3 className="mt-3 text-2xl font-semibold text-white">Spin up a concierge inbox in minutes</h3>
-              <p className="mt-2 text-sm text-white/75">Provision Gmail, sync CC&Rs into AI copilots, and notify your n8n flows.</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Create new HOA</p>
+              <h3 className="mt-2 text-2xl font-semibold text-slate-900">Launch an AI inbox in 3 steps</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Provision Gmail, sync your CC&Rs into the copilots, and keep your n8n flows notified.
+              </p>
             </div>
-            <div className="rounded-[28px] border border-white/12 bg-white/6 p-4 text-sm text-white/85">
-              <p className="text-xs uppercase tracking-[0.4em] text-white/60">Playbook</p>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-sm text-slate-700">
+              <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Playbook</p>
               <ul className="mt-3 space-y-2 text-sm">
-                <li>1 ? Name the HOA and invite operators.</li>
-                <li>2 ? Run Google OAuth to link Gmail.</li>
-                <li>3 ? Pipe threads into your n8n webhook.</li>
+                <li>1. Name the HOA and invite operators.</li>
+                <li>2. Connect Gmail via OAuth.</li>
+                <li>3. Pipe threads into your n8n webhook.</li>
               </ul>
             </div>
-            <div className="rounded-[30px] border border-white/15 bg-white/8 p-5 backdrop-blur">
+            <div className="rounded-2xl border border-slate-100 bg-white/90 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
               <CreateHoaForm />
             </div>
-          </div>
+          </GlassPanel>
         </section>
       </div>
     </div>

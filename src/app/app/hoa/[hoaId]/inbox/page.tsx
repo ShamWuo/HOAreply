@@ -250,7 +250,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                                 </form>
                               ) : null}
                             </div>
-                          </div>
+                        </div>
                           <form action={`/api/messages/${message.id}/draft`} method="post" className="mt-3 space-y-2">
                             <textarea
                               name="replyText"
@@ -258,13 +258,23 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                               rows={6}
                             />
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 justify-end">
                               <button
                                 type="submit"
-                                className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 hover:text-slate-900"
+                                className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 hover:text-slate-900 cursor-pointer"
                               >
                                 Save draft
                               </button>
+                              {!message.aiReply.sent ? (
+                                <form action={`/api/messages/${message.id}/send`} method="post">
+                                  <button
+                                    type="submit"
+                                    className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500 cursor-pointer"
+                                  >
+                                    Send
+                                  </button>
+                                </form>
+                              ) : null}
                             </div>
                           </form>
                           {message.aiReply.error ? (
