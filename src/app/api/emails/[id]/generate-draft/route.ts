@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getClassificationAndDraftFromN8n } from "@/lib/n8n";
 import { createGmailDraftForManager } from "@/lib/gmail";
 import type { HOAEmailInput, HOAManagerContext } from "@/lib/n8n-draft-types";
 
-export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session?.user?.id) {
     return new NextResponse("Unauthorized", { status: 401 });
