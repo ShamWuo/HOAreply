@@ -5,8 +5,8 @@ import { callN8nWebhook } from "@/lib/n8n";
 import { sendGmailReply } from "@/lib/gmail";
 import { logError, logInfo } from "@/lib/logger";
 
-export async function POST(_: Request, { params }: { params: { messageId: string } }) {
-  const messageId = params.messageId;
+export async function POST(_: Request, { params }: { params: Promise<{ messageId: string }> }) {
+  const { messageId } = await params;
 
   const message = await prisma.emailMessage.findUnique({
     where: { id: messageId },
