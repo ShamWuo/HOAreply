@@ -43,6 +43,7 @@ export async function pollAllGmailAccounts() {
     include: { hoa: true },
   });
 
+  logInfo("poll-gmail start", { accounts: accounts.length });
   const summaries: PollSummary[] = [];
 
   for (const account of accounts) {
@@ -77,7 +78,9 @@ async function processAccount(accountId: string) {
   }
 
   const freshAccount = await ensureAccessToken(account);
+  logInfo("poll-gmail account", { accountId: account.id, email: freshAccount.email, hoaId: account.hoaId, query: DEFAULT_QUERY });
   const messages = await fetchNewInboxMessages(freshAccount, DEFAULT_QUERY);
+  logInfo("poll-gmail messages fetched", { accountId: account.id, email: freshAccount.email, count: messages.length });
 
   let processed = 0;
 

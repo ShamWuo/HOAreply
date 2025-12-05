@@ -4,6 +4,7 @@ import { MessageDirection } from "@prisma/client";
 import { refreshAccessToken, getGmailMessage, listGmailMessages, sendGmailMessage } from "@/lib/google-api";
 import { prisma } from "@/lib/prisma";
 import type { GmailMessage } from "@/lib/google-api";
+import { logError, logInfo } from "@/lib/logger";
 
 const REFRESH_THRESHOLD_MS = 60 * 1000;
 
@@ -81,8 +82,25 @@ export function normalizeGmailMessage(message: GmailMessage) {
 }
 
 export async function fetchNewInboxMessages(account: GmailAccount, query: string) {
-  const list = await listGmailMessages(account.accessToken, query);
-  if (!list.messages?.length) {
+  logInfo("gmail list messages", { accountId: account.id, email: account.email, query });
+
+  let list;
+  try {
+    list = await listGmailMessages(account.accessToken, query);
+  } catch (error) {
+    logError("gmail list failed", {
+      accountId: account.id,
+      email: account.email,
+      query,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+
+  const count = list.messages?.length ?? 0;
+  logInfo("gmail list results", { accountId: account.id, email: account.email, count, query });
+
+  if (!count) {
     return [];
   }
 
@@ -97,8 +115,17 @@ export async function fetchNewInboxMessages(account: GmailAccount, query: string
       continue;
     }
 
-    const message = await getGmailMessage(account.accessToken, meta.id);
-    detailed.push(message);
+    try {
+      const message = await getGmailMessage(account.accessToken, meta.id);
+      detailed.push(message);
+    } catch (error) {
+      logError("gmail get message failed", {
+        accountId: account.id,
+        email: account.email,
+        messageId: meta.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   return detailed;
