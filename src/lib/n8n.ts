@@ -14,6 +14,8 @@ export interface N8nWebhookPayload {
   bodyText: string;
   bodyHtml?: string | null;
   receivedAt: string;
+  managerName: string;
+  hoaName: string;
   meta: {
     gmailAccountEmail: string;
   };
@@ -23,6 +25,15 @@ export interface N8nWebhookResponse {
   replyText: string;
   send?: boolean;
 }
+
+type N8nLogItem = {
+  output?: string;
+  logReplyDraft?: string;
+  logCategory?: string;
+  logPriority?: string;
+  logSummary?: string;
+  logSentiment?: string;
+};
 
 function safeParseJson<T>(body: string | null): T | null {
   if (!body) return null;
@@ -54,8 +65,19 @@ export async function callN8nWebhook(payload: N8nWebhookPayload) {
       throw new Error(`n8n webhook error (${response.status}): ${rawBody || "empty response"}`);
     }
 
-    const data = safeParseJson<N8nWebhookResponse>(rawBody);
+    const parsed = safeParseJson<unknown>(rawBody);
 
+    // Handle array-of-log-object responses
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const first = parsed[0] as N8nLogItem;
+      const replyText = first.logReplyDraft ?? first.output;
+      if (!replyText || typeof replyText !== "string" || !replyText.trim()) {
+        throw new Error(`n8n response missing replyText: ${rawBody || "empty body"}`);
+      }
+      return { replyText, send: false };
+    }
+
+    const data = parsed as N8nWebhookResponse | null;
     if (!data || typeof data.replyText !== "string" || data.replyText.trim().length === 0) {
       throw new Error(`n8n response missing replyText: ${rawBody || "empty body"}`);
     }

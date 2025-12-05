@@ -6,8 +6,8 @@
   --color-ink: #0b1224;
   --color-muted: #64748b;
   --color-panel: #f5f7fb;
-  --radius-md: 12px;
-  --radius-lg: 18px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --shadow-soft: 0 40px 80px rgba(11, 18, 36, 0.08);
   --shadow-card: 0 20px 50px rgba(15, 23, 42, 0.06);
 }
@@ -62,6 +62,33 @@ h4 {
   transform: translateY(-6px) rotateX(0.5deg) rotateY(-0.5deg);
   box-shadow: 0 30px 90px rgba(11, 18, 36, 0.14);
   border-color: rgba(37, 99, 235, 0.16);
+}
+
+/* Sharper corners across the UI */
+.rounded-3xl {
+  border-radius: 1rem !important;
+}
+
+.rounded-2xl {
+  border-radius: 0.9rem !important;
+}
+
+.rounded-xl {
+  border-radius: 0.75rem !important;
+}
+
+.rounded-\[32px\],
+.rounded-\[30px\],
+.rounded-\[28px\],
+.rounded-\[26px\],
+.rounded-\[24px\] {
+  border-radius: 14px !important;
+}
+
+.rounded-\[20px\],
+.rounded-\[18px\],
+.rounded-\[16px\] {
+  border-radius: 12px !important;
 }
 
 @keyframes fade-in {

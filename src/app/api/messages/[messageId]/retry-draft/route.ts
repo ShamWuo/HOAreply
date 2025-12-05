@@ -15,6 +15,9 @@ export async function POST(_: Request, { params }: { params: Promise<{ messageId
       thread: {
         include: {
           gmailAccount: true,
+          hoa: {
+            include: { user: true },
+          },
         },
       },
     },
@@ -42,6 +45,8 @@ export async function POST(_: Request, { params }: { params: Promise<{ messageId
       bodyText: message.bodyText,
       bodyHtml: message.bodyHtml ?? undefined,
       receivedAt: message.receivedAt.toISOString(),
+      managerName: message.thread.hoa.user?.name ?? message.thread.hoa.user?.email ?? "Manager",
+      hoaName: message.thread.hoa.name,
       meta: {
         gmailAccountEmail: account.email,
       },

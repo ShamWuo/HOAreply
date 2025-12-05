@@ -40,7 +40,7 @@ export async function runGmailPollJob(): Promise<PollJobResult> {
 
 export async function pollAllGmailAccounts() {
   const accounts = await prisma.gmailAccount.findMany({
-    include: { hoa: true },
+    include: { hoa: { include: { user: true } } },
   });
 
   logInfo("poll-gmail start", { accounts: accounts.length });
@@ -69,7 +69,7 @@ export async function pollGmailAccount(accountId: string) {
 async function processAccount(accountId: string) {
   const account = await prisma.gmailAccount.findUnique({
     where: { id: accountId },
-    include: { hoa: true },
+    include: { hoa: { include: { user: true } } },
   });
 
   if (!account) {
@@ -122,6 +122,8 @@ async function processAccount(accountId: string) {
     processed += 1;
 
     try {
+      const managerName = account.hoa?.user?.name ?? account.hoa?.user?.email ?? "Manager";
+      const hoaName = account.hoa?.name ?? "HOA";
       const webhookResponse = await callN8nWebhook({
         hoaId: account.hoaId,
         messageId: dbMessage.id,
@@ -133,6 +135,8 @@ async function processAccount(accountId: string) {
         bodyText: dbMessage.bodyText,
         bodyHtml: dbMessage.bodyHtml ?? undefined,
         receivedAt: dbMessage.receivedAt.toISOString(),
+        managerName,
+        hoaName,
         meta: {
           gmailAccountEmail: freshAccount.email,
         },
