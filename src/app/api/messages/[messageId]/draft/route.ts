@@ -11,8 +11,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ mes
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const payload = await request.json().catch(() => null) as { replyText?: string } | null;
-  const replyText = payload?.replyText?.trim();
+  const contentType = request.headers.get("content-type") ?? "";
+  let replyText: string | undefined;
+
+  if (contentType.includes("application/json")) {
+    const payload = (await request.json().catch(() => null)) as { replyText?: string } | null;
+    if (payload?.replyText) {
+      replyText = String(payload.replyText).trim();
+    }
+  } else {
+    const form = await request.formData().catch(() => null);
+    const formValue = form?.get("replyText");
+    if (typeof formValue === "string") {
+      replyText = formValue.trim();
+    }
+  }
+
   if (!replyText) {
     return NextResponse.json({ error: "Reply text required" }, { status: 400 });
   }

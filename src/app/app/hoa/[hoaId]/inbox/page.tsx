@@ -265,16 +265,6 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                               >
                                 Save draft
                               </button>
-                              {!message.aiReply.sent ? (
-                                <form action={`/api/messages/${message.id}/send`} method="post">
-                                  <button
-                                    type="submit"
-                                    className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-500"
-                                  >
-                                    Send
-                                  </button>
-                                </form>
-                              ) : null}
                             </div>
                           </form>
                           {message.aiReply.error ? (
