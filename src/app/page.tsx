@@ -1,11 +1,7 @@
 import Link from "next/link";
 import { JsonLd } from "@/components/seo/json-ld";
 import { LandingHero } from "@/components/landing/hero";
-import { LandingNavbar } from "@/components/landing/navbar";
 import { buildMetadata } from "@/lib/seo";
-
-const siteUrl = "https://hoareply.com";
-const privacyUrl = `${siteUrl}/privacy`;
 
 export const generateMetadata = () =>
   buildMetadata({
@@ -14,6 +10,9 @@ export const generateMetadata = () =>
       "Connect Gmail, let AI classify and draft replies, and approve with one click. Built for HOA managers and boards who need faster responses.",
     canonicalPath: "/",
   });
+const siteUrl = "https://hoareply.com";
+const privacyUrl = `${siteUrl}/privacy`;
+const termsUrl = `${siteUrl}/terms`;
 
 const pains = [
   "Residents ask the same questions over and over",
@@ -78,7 +77,7 @@ const pricingPlans = [
   {
     name: "HOA Manager",
     price: "$59",
-    descriptor: "per month · $199 setup",
+    descriptor: "per month • $199 setup",
     features: [
       "AI inbox assistant for one manager",
       "Automatic classifications and reply drafts",
@@ -127,7 +126,6 @@ const caseStudy = {
 export default function Home() {
   return (
     <div className="relative min-h-screen">
-      <LandingNavbar />
       <main className="mx-auto flex max-w-6xl flex-col gap-20 px-4 pb-20 pt-16 md:px-6">
         <JsonLd
           data={{
@@ -169,7 +167,7 @@ export default function Home() {
             </ul>
             <p className="mt-4 text-sm font-semibold text-slate-900">HOA Reply AI fixes the choke point: the inbox.</p>
           </div>
-          <div className="card-tilt rounded-3xl border border-white/60 bg-white/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.08)]">
+          <div className="card-tilt rounded-3xl border border-white/60 bg-white/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.08)]" id="workflow">
             <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">How it works</p>
             <h3 className="mt-3 text-2xl font-semibold text-slate-900">How HOA Reply AI works</h3>
             <ol className="mt-4 space-y-3 text-sm text-slate-600">
@@ -285,6 +283,9 @@ export default function Home() {
               </div>
             ))}
           </div>
+          <p className="text-sm text-slate-600">
+            Need legal details? <Link href={termsUrl} className="text-blue-600 underline-offset-2 hover:underline">Review our Terms of Service.</Link>
+          </p>
         </section>
 
         <section className="space-y-4 rounded-[28px] border border-white/60 bg-white/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.08)] animate-fade-up" id="security">
@@ -326,62 +327,18 @@ export default function Home() {
           </div>
         </section>
       </main>
-
-      <footer className="border-t border-white/60 bg-white/90">
-        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 text-sm text-slate-600 md:grid-cols-4 md:px-6">
-          <div>
-            <p className="text-lg font-semibold text-slate-900">HOA Reply AI</p>
-            <p className="mt-2 text-sm">AI inbox assistant for HOA managers and boards.</p>
-            <p className="mt-2 text-xs text-slate-500">Powered by HOA Reply AI</p>
+      <footer className="border-t border-slate-200 bg-white/80 py-6 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 text-sm text-slate-600 md:flex-row md:items-center md:justify-between md:px-6">
+          <p>© {new Date().getFullYear()} HOA Reply AI. All rights reserved.</p>
+          <div className="flex gap-4">
+            <Link href={privacyUrl} className="hover:text-slate-900">
+              Privacy Policy
+            </Link>
+            <Link href={termsUrl} className="hover:text-slate-900">
+              Terms of Service
+            </Link>
           </div>
-          {[
-            {
-              title: "Product",
-              links: ["Features", "How it works", "Pricing", "Security"],
-            },
-            {
-              title: "Company",
-              links: ["Contact", "Support", "Status"],
-            },
-            {
-              title: "Legal",
-              links: ["Privacy", "Terms", "Data deletion"],
-            },
-          ].map((column) => (
-            <div key={column.title}>
-              <p className="text-sm font-semibold text-slate-900">{column.title}</p>
-              <ul className="mt-3 space-y-2">
-                {column.links.map((link) => {
-                  const href =
-                    link === "Privacy"
-                      ? privacyUrl
-                      : link === "Data deletion"
-                      ? `${privacyUrl}#data-deletion`
-                      : link === "Contact"
-                      ? "/#contact"
-                      : link === "Features"
-                      ? "/#features"
-                      : link === "How it works"
-                      ? "/#workflow"
-                      : link === "Pricing"
-                      ? "/#pricing"
-                      : link === "Security"
-                      ? "/#security"
-                      : "#";
-
-                  return (
-                    <li key={link}>
-                      <Link href={href} className="text-slate-600 hover:underline">
-                        {link}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
         </div>
-        <div className="border-t border-white/80 py-6 text-center text-xs text-slate-500">© {new Date().getFullYear()} HOA Reply AI. All rights reserved.</div>
       </footer>
     </div>
   );

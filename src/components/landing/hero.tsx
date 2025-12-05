@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+const schedulingLink = "https://cal.com/hoareply/intro";
+
 export function LandingHero() {
   return (
     <section
@@ -23,10 +25,10 @@ export function LandingHero() {
           </div>
           <div className="flex">
             <Link
-              href="/auth/signup"
+              href={schedulingLink}
               className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-7 py-3 text-sm font-semibold text-white shadow-[0_20px_45px_rgba(37,99,235,0.35)] transition hover:from-blue-500 hover:to-blue-500"
             >
-              Start free
+              Book intro call
             </Link>
           </div>
           <div className="text-sm text-slate-600">No credit card • Secure Google OAuth • 10-minute setup</div>

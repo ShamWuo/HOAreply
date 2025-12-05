@@ -5,6 +5,8 @@ import { AuthProvider } from "@/components/providers/session-provider";
 import { PrivacyBanner } from "@/components/ui/privacy-banner";
 import { cn } from "@/lib/utils";
 import { baseMetadata } from "@/lib/seo";
+import { SiteHeader } from "@/components/layout/site-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -44,11 +46,13 @@ export default function RootLayout({
       >
         <div className="relative min-h-screen bg-white">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.08),_transparent_45%)]" />
-          <div className="relative">
+          <div className="relative flex min-h-screen flex-col">
+            <SiteHeader />
             <AuthProvider>
               <PrivacyBanner />
-              {children}
+              <main className="flex-1">{children}</main>
             </AuthProvider>
+            <SiteFooter />
           </div>
         </div>
       </body>
