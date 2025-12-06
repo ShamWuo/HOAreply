@@ -79,30 +79,16 @@ async function fetchThreads(hoaId: string) {
           resident: true,
         },
       },
-      assignedToUser: true,
       classifications: { orderBy: { createdAt: "desc" }, take: 10 },
     },
     orderBy: { updatedAt: "desc" },
   });
 }
 
-async function fetchUsers() {
-  return prisma.user.findMany({
-    select: {
-      id: true,
-      name: true,
-      email: true,
-    },
-    orderBy: { createdAt: "asc" },
-  });
-}
-
 function threadStatusStyle(status: ThreadStatus, isActive: boolean) {
   const canonical = CANONICAL_STATUS_MAP[status];
-  if (canonical === "NEW") return isActive ? "bg-white/20 text-white" : "bg-blue-600 text-white";
-  if (canonical === "WAITING_ON_RESIDENT") return isActive ? "bg-white/20 text-white" : "bg-amber-500 text-white";
-  if (canonical === "WAITING_ON_HOA") return isActive ? "bg-white/20 text-white" : "bg-slate-800 text-white";
-  if (canonical === "INTERNAL_FYI") return isActive ? "bg-white/20 text-white" : "bg-violet-600 text-white";
+  if (canonical === "OPEN") return isActive ? "bg-white/20 text-white" : "bg-blue-600 text-white";
+  if (canonical === "WAITING") return isActive ? "bg-white/20 text-white" : "bg-amber-600 text-white";
   if (canonical === "CLOSED") return isActive ? "bg-white/20 text-white" : "bg-emerald-600 text-white";
   return isActive ? "bg-white/20 text-white" : "bg-slate-800 text-white";
 }
@@ -111,52 +97,22 @@ function formatStatus(status: ThreadStatus) {
   return CANONICAL_STATUS_LABEL[CANONICAL_STATUS_MAP[status]];
 }
 
-function displayUser(user: { name: string | null; email: string } | null | undefined, selfId: string | undefined) {
-  if (!user) return "User";
-  if (selfId && user.email === selfId) return "You";
-  return user.name || user.email;
-}
-
-function userInitial(user: { name: string | null; email: string } | null | undefined) {
-  if (!user) return "?";
-  const source = user.name?.trim() || user.email;
-  return source.slice(0, 1).toUpperCase();
-}
-
-const THREAD_STATUS_OPTIONS: ThreadStatus[] = [
-  ThreadStatus.NEW,
-  ThreadStatus.AWAITING_RESIDENT,
-  ThreadStatus.PENDING,
-  ThreadStatus.FOLLOW_UP,
-  ThreadStatus.RESOLVED,
-];
-
-type CanonicalStatus = "NEW" | "WAITING_ON_RESIDENT" | "WAITING_ON_HOA" | "INTERNAL_FYI" | "CLOSED";
+type CanonicalStatus = "OPEN" | "WAITING" | "CLOSED";
 
 const CANONICAL_STATUS_MAP: Record<ThreadStatus, CanonicalStatus> = {
-  [ThreadStatus.NEW]: "NEW",
-  [ThreadStatus.AWAITING_RESIDENT]: "WAITING_ON_RESIDENT",
-  [ThreadStatus.PENDING]: "WAITING_ON_HOA",
-  [ThreadStatus.FOLLOW_UP]: "INTERNAL_FYI",
+  [ThreadStatus.NEW]: "OPEN",
+  [ThreadStatus.AWAITING_RESIDENT]: "WAITING",
+  [ThreadStatus.PENDING]: "WAITING",
+  [ThreadStatus.FOLLOW_UP]: "WAITING",
   [ThreadStatus.RESOLVED]: "CLOSED",
-  [ThreadStatus.ERROR]: "INTERNAL_FYI",
+  [ThreadStatus.ERROR]: "WAITING",
 };
 
 const CANONICAL_STATUS_LABEL: Record<CanonicalStatus, string> = {
-  NEW: "New",
-  WAITING_ON_RESIDENT: "Waiting on Resident",
-  WAITING_ON_HOA: "Waiting on HOA",
-  INTERNAL_FYI: "Internal / FYI",
+  OPEN: "Open",
+  WAITING: "Waiting",
   CLOSED: "Closed",
 };
-
-const CANONICAL_STATUS_OPTIONS = [
-  { label: CANONICAL_STATUS_LABEL.NEW, value: ThreadStatus.NEW },
-  { label: CANONICAL_STATUS_LABEL.WAITING_ON_RESIDENT, value: ThreadStatus.AWAITING_RESIDENT },
-  { label: CANONICAL_STATUS_LABEL.WAITING_ON_HOA, value: ThreadStatus.PENDING },
-  { label: CANONICAL_STATUS_LABEL.INTERNAL_FYI, value: ThreadStatus.FOLLOW_UP },
-  { label: CANONICAL_STATUS_LABEL.CLOSED, value: ThreadStatus.RESOLVED },
-];
 
 export default async function InboxPage({ params, searchParams }: InboxPageProps) {
   const resolvedParams = await params;
@@ -167,14 +123,6 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
   }
 
   const hoa = await assertHoaOwnership(resolvedParams.hoaId, session.user.id);
-  const pollRuns = hoa.gmailAccount
-    ? await prisma.pollRun.findMany({
-        where: { gmailAccountId: hoa.gmailAccount.id },
-        orderBy: { startedAt: "desc" },
-        take: 5,
-      })
-    : [];
-  const users = await fetchUsers();
   const threads = await fetchThreads(resolvedParams.hoaId);
   const primaryThreads = threads.filter((thread) => !isMarketingThread(thread));
   const sidelinedThreads = threads.filter((thread) => isMarketingThread(thread));
@@ -190,10 +138,17 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
   const residentContext = firstIncomingMessage?.resident;
   const similarCaseCount = activeThread?.classifications?.length ?? 0;
   const minutesSaved = Math.min(24, Math.max(8, Math.round(((latestAiReply?.aiReply?.replyText?.length ?? 200) / 120) + 7)));
-  const canonicalStatus = activeThread ? CANONICAL_STATUS_MAP[activeThread.status ?? ThreadStatus.NEW] : "NEW";
-  const waitingOnResident = canonicalStatus === "WAITING_ON_RESIDENT";
-  const waitingOnHoa = canonicalStatus === "WAITING_ON_HOA";
+  const canonicalStatus = activeThread ? CANONICAL_STATUS_MAP[activeThread.status ?? ThreadStatus.NEW] : "OPEN";
+  const isWaiting = canonicalStatus === "WAITING";
+  const isClosed = canonicalStatus === "CLOSED";
   const marketingActive = activeThread ? isMarketingThread(activeThread) : false;
+  const confidenceLevel = latestAiReply?.aiReply
+    ? /legal|attorney|sue|liability/i.test(latestAiReply.aiReply.replyText)
+      ? "needs-review"
+      : /escalat|complaint|angry/i.test(latestAiReply.aiReply.replyText)
+        ? "caution"
+        : "safe"
+    : "unknown";
   const success = Boolean(resolvedSearchParams?.success);
   const errorMsg = resolvedSearchParams?.message;
 
@@ -210,79 +165,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                   {primaryThreads.length} primary • {sidelinedThreads.length} auto-archived
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                <span className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-600">
-                  {hoa.gmailAccount
-                    ? hoa.gmailAccount.lastPollError
-                      ? `Poll error: ${clamp(hoa.gmailAccount.lastPollError, 100)}`
-                      : hoa.gmailAccount.lastPolledAt
-                        ? `Last polled ${hoa.gmailAccount.lastPolledAt.toLocaleString()}`
-                        : "Not yet polled"
-                    : "Gmail not connected"}
-                </span>
-                <form action={`/api/hoas/${resolvedParams.hoaId}/poll`} method="post">
-                  <button
-                    type="submit"
-                    className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:text-slate-900"
-                  >
-                    Refresh
-                  </button>
-                </form>
-                {hoa.gmailAccount?.lastPollError ? (
-                  <Link
-                    href={`/connect/gmail?hoaId=${resolvedParams.hoaId}`}
-                    className="rounded-xl border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 shadow-sm transition hover:border-red-300 hover:text-red-800"
-                  >
-                    Reconnect Gmail
-                  </Link>
-                ) : null}
-                <Link
-                  href="/app/dashboard"
-                  className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:text-slate-900"
-                >
-                  Dashboard
-                </Link>
-              </div>
             </div>
-            {pollRuns.length ? (
-              <div className="mt-4 rounded-2xl border border-slate-100 bg-white/80 p-3">
-                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Recent polls</p>
-                <div className="mt-2 space-y-2">
-                  {pollRuns.map((run) => {
-                    const badgeClass =
-                      run.status === "success"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : run.status === "error"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-slate-100 text-slate-700";
-                    return (
-                      <div
-                        key={run.id}
-                        className="flex items-start justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700"
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-semibold">{new Date(run.startedAt).toLocaleString()}</span>
-                          <span className="text-[11px] text-slate-500">
-                            {run.completedAt ? `Completed ${new Date(run.completedAt).toLocaleTimeString()}` : "In progress"}
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-end gap-1 text-right">
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-semibold uppercase tracking-[0.2em] ${badgeClass}`}>
-                            {run.status}
-                          </span>
-                          <span className="text-[11px] text-slate-500">{run.processedCount} msgs</span>
-                          {run.error ? (
-                            <span className="max-w-[12rem] truncate text-[11px] font-semibold text-red-700" title={run.error}>
-                              {clamp(run.error, 80)}
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
             <div className="mt-6 space-y-3">
               {primaryThreads.map((thread) => {
                 const lastMessage = thread.messages.at(-1);
@@ -295,10 +178,8 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                 const isActive = activeThread && thread.id === activeThread.id;
                 const needsAttention = thread.unreadCount > 0 || CANONICAL_STATUS_MAP[thread.status] !== "CLOSED";
                 const statusIcon = {
-                  NEW: "●",
-                  WAITING_ON_RESIDENT: "⧖",
-                  WAITING_ON_HOA: "⟳",
-                  INTERNAL_FYI: "◌",
+                  OPEN: "●",
+                  WAITING: "⧖",
                   CLOSED: "✓",
                 }[CANONICAL_STATUS_MAP[thread.status]];
 
@@ -359,14 +240,6 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         <span className={cn("text-[11px] font-semibold", isActive ? "text-white/70" : "text-slate-400")}> 
                           {new Date(thread.updatedAt).toLocaleString()}
                         </span>
-                        {thread.assignedToUser ? (
-                          <span className="inline-flex items-center gap-2 rounded-full bg-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-800">
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-xs text-white">
-                              {userInitial(thread.assignedToUser)}
-                            </span>
-                            {displayUser(thread.assignedToUser, session.user?.email ?? session.user?.id)}
-                          </span>
-                        ) : null}
                       </div>
                     </div>
                   </Link>
@@ -391,10 +264,8 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       const isActive = activeThread && thread.id === activeThread.id;
                       const needsAttention = thread.unreadCount > 0 || CANONICAL_STATUS_MAP[thread.status] !== "CLOSED";
                       const statusIcon = {
-                        NEW: "●",
-                        WAITING_ON_RESIDENT: "⧖",
-                        WAITING_ON_HOA: "⟳",
-                        INTERNAL_FYI: "◌",
+                        OPEN: "●",
+                        WAITING: "⧖",
                         CLOSED: "✓",
                       }[CANONICAL_STATUS_MAP[thread.status]];
 
@@ -457,14 +328,6 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                               <span className={cn("text-[11px] font-semibold", isActive ? "text-white/70" : "text-slate-400")}> 
                                 {new Date(thread.updatedAt).toLocaleString()}
                               </span>
-                              {thread.assignedToUser ? (
-                                <span className="inline-flex items-center gap-2 rounded-full bg-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-800">
-                                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-xs text-white">
-                                    {userInitial(thread.assignedToUser)}
-                                  </span>
-                                  {displayUser(thread.assignedToUser, session.user?.email ?? session.user?.id)}
-                                </span>
-                              ) : null}
                             </div>
                           </div>
                         </Link>
@@ -552,20 +415,6 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                             </span>
                           </>
                         ) : null}
-                        {!marketingActive ? (
-                          activeThread.assignedToUser ? (
-                            <span className="inline-flex items-center gap-2 rounded-full bg-slate-200 px-3 py-1 font-semibold text-slate-800">
-                              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs uppercase text-white">
-                                {userInitial(activeThread.assignedToUser)}
-                              </span>
-                              Assigned: {displayUser(activeThread.assignedToUser, session.user?.email ?? session.user?.id)}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center rounded-full border border-dashed border-slate-200 px-3 py-1 font-semibold text-slate-500">
-                              Unassigned
-                            </span>
-                          )
-                        ) : null}
                       </div>
                     </div>
                     <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-right text-xs text-slate-600">
@@ -588,6 +437,31 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         Similar past threads
                       </a>
                     </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700">
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-2 rounded-full px-3 py-1",
+                        confidenceLevel === "safe"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : confidenceLevel === "caution"
+                            ? "bg-amber-100 text-amber-800"
+                            : confidenceLevel === "needs-review"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-slate-100 text-slate-700",
+                      )}
+                    >
+                      {confidenceLevel === "safe"
+                        ? "✅ Safe to send"
+                        : confidenceLevel === "caution"
+                          ? "⚠ Needs skim"
+                          : confidenceLevel === "needs-review"
+                            ? "⚠ Needs review"
+                            : "Confidence unknown"}
+                    </span>
+                    <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700">
+                      Sending as {session.user?.name ?? "Board manager"} • {hoa.name}
+                    </span>
                   </div>
 
                   {marketingActive ? (
@@ -614,7 +488,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         {latestAiReply?.aiReply ? (
                           <a
                             href="#ai-decision"
-                            className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-blue-300 bg-blue-600 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
+                            className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-blue-500 bg-blue-600 px-5 py-3 text-[12px] font-semibold uppercase tracking-[0.25em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
                           >
                             Reply with AI draft
                           </a>
@@ -628,7 +502,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           <input type="hidden" name="clearUnread" value="true" />
                           <button
                             type="submit"
-                            className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-700 shadow-sm transition hover:-translate-y-[1px] hover:border-emerald-300 hover:bg-emerald-100"
+                            className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-600 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-100"
                           >
                             Close thread
                           </button>
@@ -636,99 +510,28 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       </div>
 
                       <div className="flex flex-wrap items-center gap-3">
-                        <form action={`/api/threads/${activeThread.id}`} method="post" className="flex items-center gap-2">
-                          <label htmlFor="status" className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                            Status
-                          </label>
-                          <div className="relative">
-                            <select
-                              id="status"
-                              name="status"
-                              defaultValue={activeThread.status ?? ThreadStatus.NEW}
-                              className="appearance-none rounded-lg border border-slate-200 bg-gradient-to-r from-white to-slate-50 px-3 py-2 pr-9 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                            >
-                              {CANONICAL_STATUS_OPTIONS.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">▾</span>
-                          </div>
-                          <button
-                            type="submit"
-                            className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
-                          >
-                            Apply
-                          </button>
-                        </form>
-
-                        <form action={`/api/threads/${activeThread.id}`} method="post" className="flex items-center gap-2">
-                          <label htmlFor="assignee" className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                            Assign
-                          </label>
-                          <div className="relative">
-                            <select
-                              id="assignee"
-                              name="assignUserId"
-                              defaultValue={activeThread.assignedToUserId ?? ""}
-                              className="appearance-none rounded-lg border border-slate-200 bg-gradient-to-r from-white to-slate-50 px-3 py-2 pr-9 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                            >
-                              <option value="">Unassigned</option>
-                              {users.map((user) => (
-                                <option key={user.id} value={user.id}>
-                                  {user.name ?? user.email}
-                                </option>
-                              ))}
-                            </select>
-                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">▾</span>
-                          </div>
-                          <button
-                            type="submit"
-                            className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
-                          >
-                            Apply
-                          </button>
-                        </form>
-
                         <form action={`/api/threads/${activeThread.id}`} method="post">
-                          <input type="hidden" name="assign" value={activeThread.assignedToUserId === session.user?.id ? "none" : "me"} />
+                          <input type="hidden" name="status" value={ThreadStatus.NEW} />
                           <button
                             type="submit"
                             className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
                           >
-                            {activeThread.assignedToUserId === session.user?.id ? "Unassign" : "Assign to me"}
-                          </button>
-                        </form>
-
-                        <form action={`/api/threads/${activeThread.id}`} method="post">
-                          <input type="hidden" name="status" value={ThreadStatus.AWAITING_RESIDENT} />
-                          <button
-                            type="submit"
-                            className={cn(
-                              "cursor-pointer rounded-lg border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] shadow-sm transition hover:-translate-y-[1px]",
-                              waitingOnResident
-                                ? "border-amber-300 bg-amber-100 text-amber-800"
-                                : "border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100",
-                            )}
-                          >
-                            Waiting on resident
+                            Mark open
                           </button>
                         </form>
 
                         <form action={`/api/threads/${activeThread.id}`} method="post">
                           <input type="hidden" name="status" value={ThreadStatus.PENDING} />
-                          <input type="hidden" name="assign" value="me" />
                           <button
                             type="submit"
                             className={cn(
                               "cursor-pointer rounded-lg border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] shadow-sm transition hover:-translate-y-[1px]",
-                              waitingOnHoa
-                                ? "border-violet-300 bg-violet-100 text-violet-800"
-                                : "border-violet-200 bg-violet-50 text-violet-700 hover:border-violet-300 hover:bg-violet-100",
+                              isWaiting
+                                ? "border-amber-300 bg-amber-100 text-amber-800"
+                                : "border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100",
                             )}
                           >
-                            Waiting on HOA
+                            Mark waiting
                           </button>
                         </form>
 
@@ -741,35 +544,51 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                             Mark all read
                           </button>
                         </form>
+
+                        <form action={`/api/threads/${activeThread.id}`} method="post">
+                          <input type="hidden" name="assign" value="me" />
+                          <button
+                            type="submit"
+                            className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
+                          >
+                            Assign to me
+                          </button>
+                        </form>
                       </div>
                     </div>
                   )}
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-3">
-                    <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-                      <div className="space-y-1">
-                        <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Time saved</p>
-                        <p className="text-sm font-semibold text-slate-900">⏱ Saved ~{minutesSaved} minutes</p>
+                  <details className="mt-4 rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm" open={false}>
+                    <summary className="flex cursor-pointer items-center justify-between text-sm font-semibold text-slate-700">
+                      <span>Insights (why this draft)</span>
+                      <span className="text-xs text-slate-500">Opens metrics</span>
+                    </summary>
+                    <div className="mt-3 grid gap-3 md:grid-cols-3">
+                      <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                        <div className="space-y-1">
+                          <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Time saved</p>
+                          <p className="text-sm font-semibold text-slate-900">⏱ Saved ~{minutesSaved} minutes</p>
+                        </div>
+                        <span className="text-[11px] text-slate-500">vs manual drafting</span>
                       </div>
-                      <span className="text-[11px] text-slate-500">vs manual drafting</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-                      <div className="space-y-1">
-                        <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Automation</p>
-                        <p className="text-sm font-semibold text-slate-900">
-                          {latestAiReply?.aiReply ? "🤖 Auto-draft ready" : "Draft not generated yet"}
-                        </p>
+                      <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                        <div className="space-y-1">
+                          <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Automation</p>
+                          <p className="text-sm font-semibold text-slate-900">
+                            {latestAiReply?.aiReply ? "🤖 Auto-draft ready" : "Draft not generated yet"}
+                          </p>
+                        </div>
+                        <span className="text-[11px] text-slate-500">Decision support</span>
                       </div>
-                      <span className="text-[11px] text-slate-500">Decision support</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
-                      <div className="space-y-1">
-                        <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Case memory</p>
-                        <p className="text-sm font-semibold text-slate-900">✅ Matches {similarCaseCount} past cases</p>
+                      <div className="flex items-center justify-between rounded-lg border border-slate-100 bg-white px-4 py-3 shadow-sm">
+                        <div className="space-y-1">
+                          <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Case memory</p>
+                          <p className="text-sm font-semibold text-slate-900">✅ Matches {similarCaseCount} past cases</p>
+                        </div>
+                        <span className="text-[11px] text-slate-500">Linked history</span>
                       </div>
-                      <span className="text-[11px] text-slate-500">Linked history</span>
                     </div>
-                  </div>
+                  </details>
                 </div>
                 <div className="space-y-5">
                   {activeThread.messages.map((message) => (
@@ -929,6 +748,31 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                 <p className="truncate text-sm font-semibold text-slate-900" title={activeThread.subject}>
                   {activeThread.subject}
                 </p>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+                  <span
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5",
+                      confidenceLevel === "safe"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : confidenceLevel === "caution"
+                          ? "bg-amber-100 text-amber-800"
+                          : confidenceLevel === "needs-review"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-slate-100 text-slate-700",
+                    )}
+                  >
+                    {confidenceLevel === "safe"
+                      ? "Confidence: Safe to send"
+                      : confidenceLevel === "caution"
+                        ? "Confidence: Needs skim"
+                        : confidenceLevel === "needs-review"
+                          ? "Confidence: Needs review"
+                          : "Confidence unknown"}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
+                    Sending as {session.user?.name ?? "Board manager"} • {hoa.name}
+                  </span>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">

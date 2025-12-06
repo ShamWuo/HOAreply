@@ -255,6 +255,10 @@ async function processAccount(accountId: string) {
         }
 
         if (webhookResponse.send) {
+          await prisma.emailThread.update({
+            where: { id: thread.id },
+            data: { status: ThreadStatus.PENDING },
+          }).catch(() => {});
           await sendGmailReply({
             account: freshAccount,
             thread,
