@@ -209,7 +209,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           {clamp(thread.subject, 140)}
                         </p>
                         {lastMessage ? (
-                          <p className={cn("truncate text-xs", isActive ? "text-white/70" : "text-slate-500")}> 
+                          <p className={cn("truncate text-xs", isActive ? "text-white/70" : "text-slate-500")}>
                             {lastMessage.direction === MessageDirection.INCOMING ? lastMessage.from : lastMessage.to}
                           </p>
                         ) : null}
@@ -218,11 +218,6 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                             <span>{statusIcon}</span>
                             {formatStatus(thread.status)}
                           </span>
-                          {thread.unreadCount ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                              {thread.unreadCount} new
-                            </span>
-                          ) : null}
                           {badge ? (
                             <span
                               className={cn(
@@ -239,11 +234,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           ) : null}
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-2 text-right">
-                        <span className={cn("text-[11px] font-semibold", isActive ? "text-white/70" : "text-slate-400")}> 
-                          {new Date(thread.updatedAt).toLocaleString()}
-                        </span>
-                      </div>
+                      {/* Timestamp removed due to data inaccuracies */}
                     </div>
                   </Link>
                 );
@@ -296,7 +287,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                                 {clamp(thread.subject, 140)}
                               </p>
                               {lastMessage ? (
-                                <p className={cn("truncate text-xs", isActive ? "text-white/70" : "text-slate-500")}> 
+                                <p className={cn("truncate text-xs", isActive ? "text-white/70" : "text-slate-500")}>
                                   {lastMessage.direction === MessageDirection.INCOMING ? lastMessage.from : lastMessage.to}
                                 </p>
                               ) : null}
@@ -322,16 +313,12 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                                     {badge}
                                   </span>
                                 ) : null}
-                                <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-700">
+                                <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700">
                                   Non-HOA detected
                                 </span>
                               </div>
                             </div>
-                            <div className="flex flex-col items-end gap-2 text-right">
-                              <span className={cn("text-[11px] font-semibold", isActive ? "text-white/70" : "text-slate-400")}> 
-                                {new Date(thread.updatedAt).toLocaleString()}
-                              </span>
-                            </div>
+                            {/* Timestamp removed due to data inaccuracies */}
                           </div>
                         </Link>
                       );
@@ -393,11 +380,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         >
                           {formatStatus(activeThread.status ?? ThreadStatus.NEW)}
                         </span>
-                        {activeThread.unreadCount ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 font-semibold text-white">
-                            {activeThread.unreadCount} unread
-                          </span>
-                        ) : null}
+                        {/* Unread chip removed; status handles attention */}
                         {activeThread.priority ? (
                           <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
                             Priority: {activeThread.priority}
@@ -420,21 +403,21 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         ) : null}
                       </div>
                     </div>
-                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-right text-xs text-slate-600">
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-right text-xs text-slate-600 lg:ml-auto">
                       <p className="font-semibold text-slate-800">HOA Context</p>
-                      {residentContext ? (
-                        <div className="space-y-1 text-right">
-                          <p className="text-sm font-semibold text-slate-900">{residentContext.name ?? residentContext.email ?? "Known resident"}</p>
-                          <p className="text-[11px] text-slate-500">Email: {residentContext.email ?? "Not provided"}</p>
-                          <p className="text-[11px] text-slate-500">Messages: {residentContext.messageCount ?? 1}</p>
-                        </div>
-                      ) : (
-                        <div className="space-y-1 text-right text-slate-600">
-                          <p className="text-sm font-semibold text-slate-900">External sender – not a resident</p>
-                          <p className="text-[11px] text-slate-500">No unit match found in the resident directory.</p>
-                          <p className="text-[11px] text-slate-500">Sender: {firstIncomingMessage?.from ?? "Unknown"}</p>
-                        </div>
-                      )}
+                        {residentContext ? (
+                          <div className="space-y-1 text-right">
+                            <p className="text-sm font-semibold text-slate-900">{residentContext.name ?? residentContext.email ?? "Known resident"}</p>
+                            <p className="text-[11px] text-slate-500">Email: {residentContext.email ?? "Not provided"}</p>
+                            <p className="text-[11px] text-slate-500">Messages: {residentContext.messageCount ?? 1}</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-1 text-right text-slate-600">
+                            <p className="text-sm font-semibold text-slate-900">External sender – not a resident</p>
+                            <p className="text-[11px] text-slate-500">No unit match found in the resident directory.</p>
+                            <p className="text-[11px] text-slate-500">Sender: {firstIncomingMessage?.from ?? "Unknown"}</p>
+                          </div>
+                        )}
                       <p className="mt-2 text-[11px]">Category: {activeThread.category ?? "Not detected"}</p>
                       <a href="#similar-threads" className="mt-1 inline-flex text-[11px] font-semibold text-blue-700 underline">
                         Similar past threads
@@ -465,16 +448,16 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                     <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700">
                       Sending as {session.user?.name ?? "Board manager"} • {hoa.name}
                     </span>
-                        <details className="inline-block">
-                          <summary className="flex cursor-pointer list-none items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:border-blue-200">
-                            ⓘ Why this reply?
-                          </summary>
-                          <div className="mt-2 w-72 space-y-2 rounded-lg border border-slate-200 bg-white p-3 text-[11px] text-slate-700 shadow-lg">
-                            <p>AI matched past cases ({similarCaseCount}).</p>
-                            <p>Estimated time saved: ~{minutesSaved} minutes vs manual drafting.</p>
-                            <p>Auto-draft confidence shown above; sending as {session.user?.name ?? "Board manager"}.</p>
-                          </div>
-                        </details>
+                    <details className="inline-block">
+                      <summary className="flex cursor-pointer list-none items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:border-blue-200">
+                        ⓘ Why this is safe
+                      </summary>
+                      <div className="mt-2 w-72 space-y-2 rounded-lg border border-slate-200 bg-white p-3 text-[11px] text-slate-700 shadow-lg">
+                        <p>AI matched past cases ({similarCaseCount}).</p>
+                        <p>Estimated time saved: ~{minutesSaved} minutes vs manual drafting.</p>
+                        <p>Auto-draft confidence shown above; sending as {session.user?.name ?? "Board manager"}.</p>
+                      </div>
+                    </details>
                   </div>
 
                   {marketingActive ? (
@@ -511,7 +494,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                               </form>
                               <a
                                 href="#ai-decision"
-                                className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline"
+                                className="inline-flex cursor-pointer items-center gap-1 rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500 transition hover:text-slate-800"
                               >
                                 Review draft
                               </a>
@@ -531,8 +514,8 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         )}
 
                         <details className="relative">
-                          <summary className="flex h-10 cursor-pointer list-none items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 transition hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-100">
-                            More
+                          <summary className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-semibold text-slate-500 transition hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-100">
+                            ⋮
                           </summary>
                           <div className="absolute left-0 z-10 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 text-[11px] shadow-lg">
                             <form action={`/api/threads/${activeThread.id}`} method="post">
@@ -587,18 +570,6 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                             </button>
                           </form>
 
-                          {activeThread.messages.length > 1 ? (
-                            <form action={`/api/threads/${activeThread.id}`} method="post">
-                              <input type="hidden" name="clearUnread" value="true" />
-                              <button
-                                type="submit"
-                                className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-100"
-                              >
-                                Mark all read
-                              </button>
-                            </form>
-                          ) : null}
-
                           {isUnassignedAndUnopened ? (
                             <form action={`/api/threads/${activeThread.id}`} method="post">
                               <input type="hidden" name="assign" value="me" />
@@ -631,7 +602,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           <p className="text-sm font-semibold text-slate-800">
                             {message.direction === MessageDirection.INCOMING ? message.from : message.to}
                           </p>
-                          <p className="text-xs text-slate-400">{message.receivedAt.toLocaleString()}</p>
+                          {/* Timestamp removed due to inaccuracy concerns */}
                         </div>
                         <p className="text-xs uppercase tracking-[0.35em] text-slate-400">
                           {message.direction === MessageDirection.INCOMING ? "Incoming" : "Outgoing"}
