@@ -386,11 +386,11 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
               </div>
             ) : (
               <div className="space-y-6">
-                <div className="space-y-3">
-                  <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Thread</p>
+                <div className="rounded-2xl border border-slate-100 bg-white/95 p-5 shadow-sm">
                   <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="space-y-2">
-                      <h1 className="text-3xl font-semibold text-slate-900">{activeThread.subject}</h1>
+                    <div className="space-y-2 min-w-0">
+                      <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Thread</p>
+                      <h1 className="text-3xl font-semibold text-slate-900 leading-tight">{activeThread.subject}</h1>
                       <p className="text-sm text-slate-500">{hoa.name} • {hoa.gmailAccount?.email ?? "Address unavailable"}</p>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
                         <span
@@ -406,14 +406,14 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                             {activeThread.unreadCount} unread
                           </span>
                         ) : null}
-                        {activeThread.category ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
-                            {activeThread.category}
-                          </span>
-                        ) : null}
                         {activeThread.priority ? (
                           <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
                             Priority: {activeThread.priority}
+                          </span>
+                        ) : null}
+                        {activeThread.category ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
+                            {activeThread.category}
                           </span>
                         ) : null}
                         {(activeThread.category ?? "").toLowerCase().includes("marketing") ? (
@@ -446,36 +446,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                     </div>
                   </div>
 
-                  <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-100 bg-white/80 p-3 text-xs shadow-sm">
-                    {activeThread.unreadCount ? (
-                      <span className="inline-flex items-center rounded-full bg-amber-500 px-3 py-1 font-semibold text-white">
-                        {activeThread.unreadCount} unread
-                      </span>
-                    ) : null}
-                    {activeThread.category ? (
-                      <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
-                        Category: {activeThread.category}
-                      </span>
-                    ) : null}
-                    {activeThread.priority ? (
-                      <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
-                        Priority: {activeThread.priority}
-                      </span>
-                    ) : null}
-                      {activeThread.assignedToUser ? (
-                        <span className="inline-flex items-center gap-2 rounded-full bg-slate-200 px-3 py-1 font-semibold text-slate-800">
-                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs uppercase text-white">
-                            {userInitial(activeThread.assignedToUser)}
-                          </span>
-                          Assigned: {displayUser(activeThread.assignedToUser, session.user?.email ?? session.user?.id)}
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full border border-dashed border-slate-200 px-3 py-1 font-semibold text-slate-500">
-                          Unassigned
-                        </span>
-                      )}
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-100 bg-white/80 p-3 text-xs shadow-sm">
+                  <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xs shadow-inner">
                     <form action={`/api/threads/${activeThread.id}`} method="post" className="flex items-center gap-2">
                       <label htmlFor="status" className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                         Status
@@ -487,17 +458,17 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           defaultValue={activeThread.status ?? ThreadStatus.NEW}
                           className="appearance-none rounded-lg border border-slate-200 bg-gradient-to-r from-white to-slate-50 px-3 py-2 pr-9 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
                         >
-                            {CANONICAL_STATUS_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
+                          {CANONICAL_STATUS_OPTIONS.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
                         </select>
                         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">▾</span>
                       </div>
                       <button
                         type="submit"
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
+                        className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
                       >
                         Update
                       </button>
@@ -524,7 +495,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       </div>
                       <button
                         type="submit"
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
+                        className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
                       >
                         Save
                       </button>
@@ -537,26 +508,16 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       )}
                       <button
                         type="submit"
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
+                        className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
                       >
                         {activeThread.assignedToUserId === session.user?.id ? "Unassign" : "Assign to me"}
-                      </button>
-                    </form>
-                    <form action={`/api/threads/${activeThread.id}`} method="post">
-                      <input type="hidden" name="status" value={ThreadStatus.RESOLVED} />
-                      <input type="hidden" name="clearUnread" value="true" />
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-700 shadow-sm transition hover:-translate-y-[1px] hover:border-emerald-300 hover:bg-emerald-100"
-                      >
-                        Close thread
                       </button>
                     </form>
                     <form action={`/api/threads/${activeThread.id}`} method="post">
                       <input type="hidden" name="status" value={ThreadStatus.AWAITING_RESIDENT} />
                       <button
                         type="submit"
-                        className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-amber-700 shadow-sm transition hover:-translate-y-[1px] hover:border-amber-300 hover:bg-amber-100"
+                        className="cursor-pointer rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-amber-700 shadow-sm transition hover:-translate-y-[1px] hover:border-amber-300 hover:bg-amber-100"
                       >
                         Waiting on resident
                       </button>
@@ -569,7 +530,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           <input type="hidden" name="clearUnread" value="true" />
                           <button
                             type="submit"
-                            className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-400 hover:bg-slate-100"
+                            className="cursor-pointer rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-400 hover:bg-slate-100"
                           >
                             Archive / Ignore
                           </button>
@@ -577,17 +538,27 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       ) : (
                         <button
                           type="submit"
-                          className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-700 shadow-sm transition hover:-translate-y-[1px] hover:border-violet-300 hover:bg-violet-100"
+                          className="cursor-pointer rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-700 shadow-sm transition hover:-translate-y-[1px] hover:border-violet-300 hover:bg-violet-100"
                         >
                           Wait on HOA
                         </button>
                       )}
                     </form>
                     <form action={`/api/threads/${activeThread.id}`} method="post">
+                      <input type="hidden" name="status" value={ThreadStatus.RESOLVED} />
                       <input type="hidden" name="clearUnread" value="true" />
                       <button
                         type="submit"
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-100"
+                        className="cursor-pointer rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-700 shadow-sm transition hover:-translate-y-[1px] hover:border-emerald-300 hover:bg-emerald-100"
+                      >
+                        Close thread
+                      </button>
+                    </form>
+                    <form action={`/api/threads/${activeThread.id}`} method="post">
+                      <input type="hidden" name="clearUnread" value="true" />
+                      <button
+                        type="submit"
+                        className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-100"
                       >
                         Mark all read
                       </button>
@@ -640,7 +611,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                               <form action={`/api/messages/${message.id}/retry-draft?variant=regenerate`} method="post">
                                 <button
                                   type="submit"
-                                  className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 transition hover:border-blue-300"
+                                  className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-300 hover:bg-blue-50"
                                 >
                                   Regenerate
                                 </button>
@@ -649,7 +620,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                                 <form action={`/api/messages/${message.id}/retry-draft?variant=regenerate`} method="post">
                                   <button
                                     type="submit"
-                                    className="inline-flex items-center gap-1 rounded-xl border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-700 transition hover:border-red-400 hover:bg-red-100"
+                                    className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-700 shadow-sm transition hover:-translate-y-[1px] hover:border-red-400 hover:bg-red-100"
                                   >
                                     Retry
                                   </button>
@@ -659,7 +630,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                                 <form action={`/api/messages/${message.id}/send`} method="post">
                                   <button
                                     type="submit"
-                                    className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-blue-500"
+                                    className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
                                   >
                                     Send
                                   </button>
@@ -721,7 +692,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                             <div className="flex justify-end gap-2">
                               <button
                                 type="submit"
-                                className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 hover:text-slate-900"
+                                className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:text-slate-900"
                               >
                                 Save draft
                               </button>
@@ -750,9 +721,14 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                   {activeThread.subject}
                 </p>
               </div>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500 group-open:rotate-0 group-open:translate-y-0">
-                {latestAiReply.aiReply.sent ? "Sent" : "Draft"}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">
+                  {latestAiReply.aiReply.sent ? "Sent" : "Draft"}
+                </span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 bg-white text-xs font-semibold text-slate-600 transition group-open:rotate-0 group-open:scale-95">
+                  ▾
+                </span>
+              </div>
             </summary>
 
             <div className="mt-3 space-y-3 rounded-xl bg-slate-50/90 p-4 shadow-inner">
@@ -786,20 +762,20 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                     <form action={`/api/messages/${latestAiReply.id}/send`} method="post">
                       <button
                         type="submit"
-                        className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
                       >
                         Send
                       </button>
                     </form>
                     <a
                       href={`/app/hoa/${resolvedParams.hoaId}/inbox?thread=${activeThread.id}`}
-                      className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-300"
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-300"
                     >
                       Edit
                     </a>
                     <a
                       href={`#message-${latestAiReply.id}`}
-                      className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300"
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300"
                     >
                       Dismiss
                     </a>
@@ -816,7 +792,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                   <form action={`/api/messages/${latestAiReply.id}/retry-draft?variant=regenerate`} method="post">
                     <button
                       type="submit"
-                      className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-300 hover:text-slate-900"
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-300 hover:text-slate-900"
                     >
                       Regenerate
                     </button>
@@ -825,7 +801,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                     <form action={`/api/messages/${latestAiReply.id}/send`} method="post">
                       <button
                         type="submit"
-                        className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
                       >
                         Send
                       </button>
@@ -834,7 +810,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                   <form action={`/api/messages/${latestAiReply.id}/retry-draft?variant=regenerate`} method="post">
                     <button
                       type="submit"
-                      className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300"
+                      className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300"
                     >
                       Dismiss
                     </button>
