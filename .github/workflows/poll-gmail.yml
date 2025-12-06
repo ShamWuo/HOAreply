@@ -2,12 +2,13 @@ name: Poll Gmail
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
   poll:
     runs-on: ubuntu-latest
+    environment: Production
     steps:
       - name: Call poll-gmail endpoint
         env:
