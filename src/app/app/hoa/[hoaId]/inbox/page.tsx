@@ -142,6 +142,10 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
   const isWaiting = canonicalStatus === "WAITING";
   const isClosed = canonicalStatus === "CLOSED";
   const marketingActive = activeThread ? isMarketingThread(activeThread) : false;
+  const isSafeToSend = confidenceLevel === "safe" && Boolean(latestAiReply?.aiReply);
+  const showStatusControls = !isSafeToSend || Boolean(latestAiReply?.aiReply?.sent);
+  const isUnassignedAndUnopened =
+    !activeThread?.assignedToUserId && canonicalStatus === "OPEN" && (activeThread?.unreadCount ?? 0) > 0;
   const confidenceLevel = latestAiReply?.aiReply
     ? /legal|attorney|sue|liability/i.test(latestAiReply.aiReply.replyText)
       ? "needs-review"
@@ -496,84 +500,123 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                     <div className="mt-4 space-y-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xs shadow-inner">
                       <div className="flex flex-wrap items-center gap-3">
                         {latestAiReply?.aiReply ? (
-                          <a
-                            href="#ai-decision"
-                            className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-blue-600 bg-blue-600 px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.25em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
-                          >
-                            Reply with AI draft
-                          </a>
+                          isSafeToSend ? (
+                            <>
+                              <form action={`/api/messages/${latestAiReply.id}/send`} method="post">
+                                <button
+                                  type="submit"
+                                  className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-blue-700 bg-blue-700 px-7 py-3 text-[12px] font-semibold uppercase tracking-[0.25em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-600"
+                                >
+                                  Send now
+                                </button>
+                              </form>
+                              <a
+                                href="#ai-decision"
+                                className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-transparent bg-transparent px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 underline-offset-4 hover:text-slate-900 hover:underline"
+                              >
+                                Review draft
+                              </a>
+                            </>
+                          ) : (
+                            <a
+                              href="#ai-decision"
+                              className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-blue-600 bg-blue-600 px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.25em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
+                            >
+                              Reply with AI draft
+                            </a>
+                          )
                         ) : (
                           <span className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">
                             No AI draft yet
                           </span>
                         )}
-                        <form action={`/api/threads/${activeThread.id}`} method="post">
-                          <input type="hidden" name="status" value={ThreadStatus.RESOLVED} />
-                          <input type="hidden" name="clearUnread" value="true" />
-                          <button
-                            type="submit"
-                            className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-600 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-100"
-                          >
-                            Close thread
-                          </button>
-                        </form>
+
+                        <details className="relative">
+                          <summary className="flex h-10 cursor-pointer list-none items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600 transition hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-100">
+                            More
+                          </summary>
+                          <div className="absolute left-0 z-10 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 text-[11px] shadow-lg">
+                            <form action={`/api/threads/${activeThread.id}`} method="post">
+                              <input type="hidden" name="status" value={ThreadStatus.RESOLVED} />
+                              <input type="hidden" name="clearUnread" value="true" />
+                              <button
+                                type="submit"
+                                disabled={!latestAiReply?.aiReply?.sent}
+                                className={cn(
+                                  "w-full cursor-pointer rounded-lg px-3 py-2 text-left font-semibold uppercase tracking-[0.2em] transition",
+                                  latestAiReply?.aiReply?.sent
+                                    ? "text-slate-700 hover:-translate-y-[1px] hover:bg-slate-100"
+                                    : "cursor-not-allowed text-slate-300",
+                                )}
+                              >
+                                Close thread
+                              </button>
+                            </form>
+                          </div>
+                        </details>
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-3">
-                        <form action={`/api/threads/${activeThread.id}`} method="post">
-                          <input type="hidden" name="status" value={ThreadStatus.PENDING} />
-                          <button
-                            type="submit"
-                            className={cn(
-                              "cursor-pointer rounded-lg border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] shadow-sm transition hover:-translate-y-[1px]",
-                              isWaiting
-                                ? "border-amber-300 bg-amber-100 text-amber-800"
-                                : "border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100",
-                            )}
-                          >
-                            Replied — waiting on resident
-                          </button>
-                        </form>
-
-                        <form action={`/api/threads/${activeThread.id}`} method="post">
-                          <input type="hidden" name="status" value={ThreadStatus.FOLLOW_UP} />
-                          <button
-                            type="submit"
-                            className={cn(
-                              "cursor-pointer rounded-lg border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] shadow-sm transition hover:-translate-y-[1px]",
-                              isWaiting
-                                ? "border-violet-300 bg-violet-100 text-violet-800"
-                                : "border-violet-200 bg-violet-50 text-violet-700 hover:border-violet-300 hover:bg-violet-100",
-                            )}
-                          >
-                            Needs HOA action
-                          </button>
-                        </form>
-
-                        {activeThread.messages.length > 1 ? (
+                      {showStatusControls ? (
+                        <div className="flex flex-wrap items-center gap-3">
                           <form action={`/api/threads/${activeThread.id}`} method="post">
-                            <input type="hidden" name="clearUnread" value="true" />
+                            <input type="hidden" name="status" value={ThreadStatus.PENDING} />
                             <button
                               type="submit"
-                              className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-100"
+                              className={cn(
+                                "cursor-pointer rounded-lg border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] shadow-sm transition hover:-translate-y-[1px]",
+                                isWaiting
+                                  ? "border-amber-300 bg-amber-100 text-amber-800"
+                                  : "border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100",
+                              )}
                             >
-                              Mark all read
+                              Replied — waiting on resident
                             </button>
                           </form>
-                        ) : null}
 
-                        {!activeThread.assignedToUserId ? (
                           <form action={`/api/threads/${activeThread.id}`} method="post">
-                            <input type="hidden" name="assign" value="me" />
+                            <input type="hidden" name="status" value={ThreadStatus.FOLLOW_UP} />
                             <button
                               type="submit"
-                              className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
+                              className={cn(
+                                "cursor-pointer rounded-lg border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] shadow-sm transition hover:-translate-y-[1px]",
+                                isWaiting
+                                  ? "border-violet-300 bg-violet-100 text-violet-800"
+                                  : "border-violet-200 bg-violet-50 text-violet-700 hover:border-violet-300 hover:bg-violet-100",
+                              )}
                             >
-                              Assign to me
+                              Needs HOA action
                             </button>
                           </form>
-                        ) : null}
-                      </div>
+
+                          {activeThread.messages.length > 1 ? (
+                            <form action={`/api/threads/${activeThread.id}`} method="post">
+                              <input type="hidden" name="clearUnread" value="true" />
+                              <button
+                                type="submit"
+                                className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-100"
+                              >
+                                Mark all read
+                              </button>
+                            </form>
+                          ) : null}
+
+                          {isUnassignedAndUnopened ? (
+                            <form action={`/api/threads/${activeThread.id}`} method="post">
+                              <input type="hidden" name="assign" value="me" />
+                              <button
+                                type="submit"
+                                className="cursor-pointer rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
+                              >
+                                Assign to me
+                              </button>
+                            </form>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <p className="px-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                          Status will auto-set to Waiting after you send.
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -799,64 +842,66 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                 </div>
                 <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                   <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Actions</p>
-                  <div className="mt-1 flex flex-wrap gap-2">
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
                     <form action={`/api/messages/${latestAiReply.id}/send`} method="post">
                       <button
                         type="submit"
-                        className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-blue-700 bg-blue-700 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-600"
                       >
-                        Send
+                        Send now
                       </button>
                     </form>
-                    <a
-                      href={`/app/hoa/${resolvedParams.hoaId}/inbox?thread=${activeThread.id}`}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-300"
-                    >
-                      Edit
-                    </a>
-                    <a
-                      href={`#message-${latestAiReply.id}`}
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300"
-                    >
-                      Dismiss
-                    </a>
+                    {isSafeToSend && !latestAiReply.aiReply.sent ? (
+                      <a
+                        href={`#message-${latestAiReply.id}`}
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-500 hover:text-slate-800"
+                      >
+                        Preview only
+                      </a>
+                    ) : (
+                      <>
+                        <a
+                          href={`/app/hoa/${resolvedParams.hoaId}/inbox?thread=${activeThread.id}`}
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-300"
+                        >
+                          Edit
+                        </a>
+                        <a
+                          href={`#message-${latestAiReply.id}`}
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300"
+                        >
+                          Dismiss
+                        </a>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
-
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
                   <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-blue-800">Suggested reply</span>
                   <span className="inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-slate-700">Auto-draft</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <form action={`/api/messages/${latestAiReply.id}/retry-draft?variant=regenerate`} method="post">
-                    <button
-                      type="submit"
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-300 hover:text-slate-900"
-                    >
-                      Regenerate
-                    </button>
-                  </form>
-                  {!latestAiReply.aiReply.sent ? (
-                    <form action={`/api/messages/${latestAiReply.id}/send`} method="post">
+                {!isSafeToSend || latestAiReply.aiReply.sent ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <form action={`/api/messages/${latestAiReply.id}/retry-draft?variant=regenerate`} method="post">
                       <button
                         type="submit"
-                        className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-300 hover:text-slate-900"
                       >
-                        Send
+                        Regenerate
                       </button>
                     </form>
-                  ) : null}
-                  <form action={`/api/messages/${latestAiReply.id}/retry-draft?variant=regenerate`} method="post">
-                    <button
-                      type="submit"
-                      className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300"
-                    >
-                      Dismiss
-                    </button>
-                  </form>
-                </div>
+                    <form action={`/api/messages/${latestAiReply.id}/retry-draft?variant=regenerate`} method="post">
+                      <button
+                        type="submit"
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300"
+                      >
+                        Dismiss
+                      </button>
+                    </form>
+                  </div>
+                ) : null}
               </div>
 
               <div className="max-h-[60vh] min-h-[240px] overflow-auto rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm text-slate-800">

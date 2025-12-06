@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { sendGmailReply } from "@/lib/gmail";
 import { assertHoaOwnership } from "@/lib/hoa";
 import { logError, logInfo } from "@/lib/logger";
+import { ThreadStatus } from "@prisma/client";
 
 export async function POST(request: Request, { params }: { params: Promise<{ messageId: string }> }) {
   const { messageId } = await params;
@@ -47,10 +48,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ mes
       aiReply: message.aiReply,
     });
 
-    await prisma.aIReply.update({
-      where: { id: message.aiReply.id },
-      data: { sent: true, error: null },
-    });
+    await prisma.$transaction([
+      prisma.aIReply.update({
+        where: { id: message.aiReply.id },
+        data: { sent: true, error: null },
+      }),
+      prisma.emailThread.update({
+        where: { id: message.threadId },
+        data: { status: ThreadStatus.PENDING },
+      }),
+    ]);
 
     logInfo("manual send success", { messageId, threadId: message.threadId });
     const redirectUrl = new URL(`/app/hoa/${message.thread.hoaId}/inbox?thread=${message.threadId}`, request.url);
