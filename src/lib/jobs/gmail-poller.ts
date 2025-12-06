@@ -170,18 +170,18 @@ async function processAccount(accountId: string) {
           subject: normalized.headers.subject,
           updatedAt: new Date(),
           gmailAccountId: freshAccount.id,
-          status: marketing ? ThreadStatus.FOLLOW_UP : ThreadStatus.NEW,
+          status: marketing ? ThreadStatus.RESOLVED : ThreadStatus.NEW,
           category: marketing ? "Marketing / System" : undefined,
-          unreadCount: { increment: 1 },
+          unreadCount: marketing ? { set: 0 } : { increment: 1 },
         },
         create: {
           gmailThreadId: message.threadId,
           subject: normalized.headers.subject,
           hoaId: account.hoaId,
           gmailAccountId: freshAccount.id,
-          status: marketing ? ThreadStatus.FOLLOW_UP : ThreadStatus.NEW,
+          status: marketing ? ThreadStatus.RESOLVED : ThreadStatus.NEW,
           category: marketing ? "Marketing / System" : undefined,
-          unreadCount: 1,
+          unreadCount: marketing ? 0 : 1,
         },
       });
 
