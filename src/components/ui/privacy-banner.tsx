@@ -8,7 +8,7 @@ const PRIVACY_URL = "https://hoareply.com/privacy";
 const STORAGE_KEY = "hoareply_privacy_banner_dismissed";
 
 export function PrivacyBanner() {
-  const [dismissed, setDismissed] = useState<boolean>(true);
+  const [dismissed, setDismissed] = useState<boolean>(false);
 
   useEffect(() => {
     try {

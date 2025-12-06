@@ -63,6 +63,11 @@ npm run dev
 
 Visit `http://localhost:3000` for marketing site, `/auth/signup` to create a user, and `/app/dashboard` for the authenticated app.
 
+## Security & data retention
+
+- Gmail access and refresh tokens are encrypted at rest with AES-256-GCM. Provide `ENCRYPTION_KEY` (base64-encoded 32-byte key, e.g., `openssl rand -base64 32`) in your environment.
+- Disconnecting a Gmail account stops further ingestion. Request deletion via the in-app privacy link (`/privacy#data-deletion`) to remove stored data.
+
 ## Gmail OAuth configuration
 
 1. Create a Google Cloud project and enable the Gmail API.

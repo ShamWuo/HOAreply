@@ -5,23 +5,38 @@ import { refreshAccessToken, getGmailMessage, listGmailMessages, sendGmailMessag
 import { prisma } from "@/lib/prisma";
 import type { GmailMessage } from "@/lib/google-api";
 import { logError, logInfo } from "@/lib/logger";
+import { decryptString, encryptString } from "@/lib/crypto";
 
 const REFRESH_THRESHOLD_MS = 60 * 1000;
 
-export async function ensureAccessToken(account: GmailAccount) {
-  if (account.expiryDate.getTime() - Date.now() > REFRESH_THRESHOLD_MS) {
-    return account;
+type DecryptedGmailAccount = GmailAccount & { accessToken: string; refreshToken: string };
+
+function withDecryptedTokens(account: GmailAccount): DecryptedGmailAccount {
+  return {
+    ...account,
+    accessToken: decryptString(account.accessToken),
+    refreshToken: decryptString(account.refreshToken),
+  };
+}
+
+export async function ensureAccessToken(account: GmailAccount): Promise<DecryptedGmailAccount> {
+  const usableAccount = withDecryptedTokens(account);
+
+  if (usableAccount.expiryDate.getTime() - Date.now() > REFRESH_THRESHOLD_MS) {
+    return usableAccount;
   }
 
   console.info(`Refreshing Gmail token for HOA ${account.hoaId}`);
-  const refreshed = await refreshAccessToken(account.refreshToken);
-  return prisma.gmailAccount.update({
+  const refreshed = await refreshAccessToken(usableAccount.refreshToken);
+  const updated = await prisma.gmailAccount.update({
     where: { id: account.id },
     data: {
-      accessToken: refreshed.accessToken,
+      accessToken: encryptString(refreshed.accessToken),
       expiryDate: new Date(Date.now() + refreshed.expiresIn * 1000),
     },
   });
+
+  return withDecryptedTokens(updated);
 }
 
 export function parseGmailHeaders(message: GmailMessage) {
@@ -81,7 +96,7 @@ export function normalizeGmailMessage(message: GmailMessage) {
   };
 }
 
-export async function fetchNewInboxMessages(account: GmailAccount, query: string) {
+export async function fetchNewInboxMessages(account: DecryptedGmailAccount, query: string) {
   logInfo("gmail list messages", { accountId: account.id, email: account.email, query });
 
   let list;

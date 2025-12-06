@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { verifySignedState } from "@/lib/state";
 import { pollGmailAccount } from "@/lib/jobs/gmail-poller";
 import { logError } from "@/lib/logger";
+import { decryptString, encryptString } from "@/lib/crypto";
 
 function buildRedirectUrl(request: Request, hoaId: string, status: "success" | "error", message?: string) {
   const base = new URL(`/app/hoa/${hoaId}/inbox`, request.url);
@@ -34,7 +35,11 @@ export async function GET(request: Request) {
       where: { hoaId: state.hoaId },
     });
 
-    const refreshToken = tokens.refreshToken ?? existingAccount?.refreshToken;
+    const existingRefreshToken = existingAccount?.refreshToken
+      ? decryptString(existingAccount.refreshToken)
+      : undefined;
+
+    const refreshToken = tokens.refreshToken ?? existingRefreshToken;
     if (!refreshToken) {
       throw new Error("Missing refresh token in Google response");
     }
@@ -45,15 +50,15 @@ export async function GET(request: Request) {
       where: { hoaId: state.hoaId },
       update: {
         email: gmailProfile.emailAddress,
-        accessToken: tokens.accessToken,
-        refreshToken,
+        accessToken: encryptString(tokens.accessToken),
+        refreshToken: encryptString(refreshToken),
         expiryDate,
       },
       create: {
         hoaId: state.hoaId,
         email: gmailProfile.emailAddress,
-        accessToken: tokens.accessToken,
-        refreshToken,
+        accessToken: encryptString(tokens.accessToken),
+        refreshToken: encryptString(refreshToken),
         expiryDate,
       },
     });
