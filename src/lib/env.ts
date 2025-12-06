@@ -15,6 +15,7 @@ const envSchema = z.object({
   SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).optional(),
   N8N_CLASSIFY_DRAFT_URL: z.string().url().optional(),
   N8N_HOAREPLY_SECRET: z.string().optional(),
+  OPENAI_API_KEY: z.string().min(1).optional(),
 });
 
 const envResult = envSchema.safeParse({
@@ -32,6 +33,7 @@ const envResult = envSchema.safeParse({
   SENTRY_TRACES_SAMPLE_RATE: process.env.SENTRY_TRACES_SAMPLE_RATE,
   N8N_CLASSIFY_DRAFT_URL: process.env.N8N_CLASSIFY_DRAFT_URL,
   N8N_HOAREPLY_SECRET: process.env.N8N_HOAREPLY_SECRET,
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
 });
 
 if (!envResult.success) {

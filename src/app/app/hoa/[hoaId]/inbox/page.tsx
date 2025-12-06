@@ -3,9 +3,14 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertHoaOwnership } from "@/lib/hoa";
-import { MessageDirection } from "@prisma/client";
+import { MessageDirection, ThreadStatus } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { cn } from "@/lib/utils";
+
+function clamp(text: string | null | undefined, max = 120) {
+  if (!text) return "";
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
 
 interface InboxPageProps {
   params: Promise<{ hoaId: string }>;
@@ -47,6 +52,7 @@ function sanitizeHtml(html: string) {
   );
 }
 
+
 function buildMessageHtml(message: { bodyHtml: string | null; bodyText: string }) {
   if (message.bodyHtml && message.bodyHtml.trim()) {
     return sanitizeHtml(message.bodyHtml);
@@ -67,10 +73,58 @@ async function fetchThreads(hoaId: string) {
           aiReply: true,
         },
       },
+      assignedToUser: true,
+      classifications: { orderBy: { createdAt: "desc" }, take: 10 },
     },
     orderBy: { updatedAt: "desc" },
   });
 }
+
+async function fetchUsers() {
+  return prisma.user.findMany({
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
+function threadStatusStyle(status: ThreadStatus, isActive: boolean) {
+  if (status === ThreadStatus.ERROR) return "bg-red-600 text-white";
+  if (status === ThreadStatus.NEW) return isActive ? "bg-white/20 text-white" : "bg-blue-600 text-white";
+  if (status === ThreadStatus.PENDING) return isActive ? "bg-white/20 text-white" : "bg-amber-500 text-white";
+  if (status === ThreadStatus.AWAITING_RESIDENT) return isActive ? "bg-white/20 text-white" : "bg-slate-800 text-white";
+  if (status === ThreadStatus.FOLLOW_UP) return isActive ? "bg-white/20 text-white" : "bg-violet-600 text-white";
+  if (status === ThreadStatus.RESOLVED) return isActive ? "bg-white/20 text-white" : "bg-emerald-600 text-white";
+  return isActive ? "bg-white/20 text-white" : "bg-slate-800 text-white";
+}
+
+function formatStatus(status: ThreadStatus) {
+  return status.replace(/_/g, " ").toLowerCase().replace(/^./, (c) => c.toUpperCase());
+}
+
+function displayUser(user: { name: string | null; email: string } | null | undefined, selfId: string | undefined) {
+  if (!user) return "User";
+  if (selfId && user.email === selfId) return "You";
+  return user.name || user.email;
+}
+
+function userInitial(user: { name: string | null; email: string } | null | undefined) {
+  if (!user) return "?";
+  const source = user.name?.trim() || user.email;
+  return source.slice(0, 1).toUpperCase();
+}
+
+const THREAD_STATUS_OPTIONS: ThreadStatus[] = [
+  ThreadStatus.NEW,
+  ThreadStatus.PENDING,
+  ThreadStatus.AWAITING_RESIDENT,
+  ThreadStatus.FOLLOW_UP,
+  ThreadStatus.RESOLVED,
+  ThreadStatus.ERROR,
+];
 
 export default async function InboxPage({ params, searchParams }: InboxPageProps) {
   const resolvedParams = await params;
@@ -80,11 +134,23 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
     notFound();
   }
 
-  await assertHoaOwnership(resolvedParams.hoaId, session.user.id);
+  const hoa = await assertHoaOwnership(resolvedParams.hoaId, session.user.id);
+  const pollRuns = hoa.gmailAccount
+    ? await prisma.pollRun.findMany({
+        where: { gmailAccountId: hoa.gmailAccount.id },
+        orderBy: { startedAt: "desc" },
+        take: 5,
+      })
+    : [];
+  const users = await fetchUsers();
   const threads = await fetchThreads(resolvedParams.hoaId);
   const requestedThreadId =
     typeof resolvedSearchParams?.thread === "string" ? resolvedSearchParams.thread : undefined;
   const activeThread = threads.find((thread) => thread.id === requestedThreadId) ?? threads[0];
+  const latestAiReply = activeThread?.messages
+    .slice()
+    .reverse()
+    .find((m) => m.aiReply);
   const success = Boolean(resolvedSearchParams?.success);
   const errorMsg = resolvedSearchParams?.message;
 
@@ -99,7 +165,16 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                 <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Threads</p>
                 <p className="text-xs text-slate-500">{threads.length} conversations</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <span className="flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-600">
+                  {hoa.gmailAccount
+                    ? hoa.gmailAccount.lastPollError
+                      ? `Poll error: ${clamp(hoa.gmailAccount.lastPollError, 100)}`
+                      : hoa.gmailAccount.lastPolledAt
+                        ? `Last polled ${hoa.gmailAccount.lastPolledAt.toLocaleString()}`
+                        : "Not yet polled"
+                    : "Gmail not connected"}
+                </span>
                 <form action={`/api/hoas/${resolvedParams.hoaId}/poll`} method="post">
                   <button
                     type="submit"
@@ -108,6 +183,14 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                     Refresh
                   </button>
                 </form>
+                {hoa.gmailAccount?.lastPollError ? (
+                  <Link
+                    href={`/connect/gmail?hoaId=${resolvedParams.hoaId}`}
+                    className="rounded-xl border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 shadow-sm transition hover:border-red-300 hover:text-red-800"
+                  >
+                    Reconnect Gmail
+                  </Link>
+                ) : null}
                 <Link
                   href="/app/dashboard"
                   className="rounded-xl border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:text-slate-900"
@@ -116,6 +199,45 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                 </Link>
               </div>
             </div>
+            {pollRuns.length ? (
+              <div className="mt-4 rounded-2xl border border-slate-100 bg-white/80 p-3">
+                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Recent polls</p>
+                <div className="mt-2 space-y-2">
+                  {pollRuns.map((run) => {
+                    const badgeClass =
+                      run.status === "success"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : run.status === "error"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-slate-100 text-slate-700";
+                    return (
+                      <div
+                        key={run.id}
+                        className="flex items-start justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-700"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-semibold">{new Date(run.startedAt).toLocaleString()}</span>
+                          <span className="text-[11px] text-slate-500">
+                            {run.completedAt ? `Completed ${new Date(run.completedAt).toLocaleTimeString()}` : "In progress"}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 text-right">
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-semibold uppercase tracking-[0.2em] ${badgeClass}`}>
+                            {run.status}
+                          </span>
+                          <span className="text-[11px] text-slate-500">{run.processedCount} msgs</span>
+                          {run.error ? (
+                            <span className="max-w-[12rem] truncate text-[11px] font-semibold text-red-700" title={run.error}>
+                              {clamp(run.error, 80)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             <div className="mt-6 space-y-3">
               {threads.map((thread) => {
                 const lastMessage = thread.messages.at(-1);
@@ -164,6 +286,24 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         {badge}
                       </span>
                     ) : null}
+                    {thread.status ? (
+                      <span
+                        className={cn(
+                          "ml-2 mt-3 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em]",
+                          threadStatusStyle(thread.status, Boolean(isActive)),
+                        )}
+                      >
+                        {formatStatus(thread.status)}
+                      </span>
+                    ) : null}
+                    {thread.assignedToUser ? (
+                      <span className="ml-2 mt-2 inline-flex items-center gap-2 rounded-full bg-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-800">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-xs text-white">
+                          {userInitial(thread.assignedToUser)}
+                        </span>
+                        Assigned: {displayUser(thread.assignedToUser, session.user?.email ?? session.user?.id)}
+                      </span>
+                    ) : null}
                   </Link>
                 );
               })}
@@ -192,6 +332,143 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                 <div>
                   <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Subject</p>
                   <h1 className="text-3xl font-semibold text-slate-900">{activeThread.subject}</h1>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                    <span
+                      className={cn(
+                        "inline-flex items-center rounded-full px-3 py-1 font-semibold uppercase tracking-[0.3em]",
+                        threadStatusStyle(activeThread.status ?? ThreadStatus.NEW, true),
+                      )}
+                    >
+                      {formatStatus(activeThread.status ?? ThreadStatus.NEW)}
+                    </span>
+                    {activeThread.unreadCount ? (
+                      <span className="inline-flex items-center rounded-full bg-amber-500 px-3 py-1 font-semibold text-white">
+                        {activeThread.unreadCount} unread
+                      </span>
+                    ) : null}
+                    {activeThread.category ? (
+                      <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
+                        Category: {activeThread.category}
+                      </span>
+                    ) : null}
+                    {activeThread.priority ? (
+                      <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
+                        Priority: {activeThread.priority}
+                      </span>
+                    ) : null}
+                      {activeThread.assignedToUser ? (
+                        <span className="inline-flex items-center gap-2 rounded-full bg-slate-200 px-3 py-1 font-semibold text-slate-800">
+                          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs uppercase text-white">
+                            {userInitial(activeThread.assignedToUser)}
+                          </span>
+                          Assigned: {displayUser(activeThread.assignedToUser, session.user?.email ?? session.user?.id)}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-dashed border-slate-200 px-3 py-1 font-semibold text-slate-500">
+                          Unassigned
+                        </span>
+                      )}
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+                    <form action={`/api/threads/${activeThread.id}`} method="post" className="flex items-center gap-2">
+                      <label htmlFor="status" className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                        Status
+                      </label>
+                      <select
+                        id="status"
+                        name="status"
+                        defaultValue={activeThread.status ?? ThreadStatus.NEW}
+                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm focus:border-blue-300 focus:outline-none"
+                      >
+                        {THREAD_STATUS_OPTIONS.map((status) => (
+                          <option key={status} value={status}>
+                            {formatStatus(status)}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 transition hover:border-blue-200"
+                      >
+                        Update
+                      </button>
+                    </form>
+                    <form action={`/api/threads/${activeThread.id}`} method="post" className="flex items-center gap-2">
+                      <label htmlFor="assignee" className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                        Assignee
+                      </label>
+                      <select
+                        id="assignee"
+                        name="assignUserId"
+                        defaultValue={activeThread.assignedToUserId ?? ""}
+                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm focus:border-blue-300 focus:outline-none"
+                      >
+                        <option value="">Unassigned</option>
+                        {users.map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.name ?? user.email}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 transition hover:border-blue-200"
+                      >
+                        Save
+                      </button>
+                    </form>
+                    <form action={`/api/threads/${activeThread.id}`} method="post">
+                      {activeThread.assignedToUserId === session.user?.id ? (
+                        <input type="hidden" name="assign" value="none" />
+                      ) : (
+                        <input type="hidden" name="assign" value="me" />
+                      )}
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 transition hover:border-blue-200"
+                      >
+                        {activeThread.assignedToUserId === session.user?.id ? "Unassign" : "Assign to me"}
+                      </button>
+                    </form>
+                    <form action={`/api/threads/${activeThread.id}`} method="post">
+                      <input type="hidden" name="status" value={ThreadStatus.RESOLVED} />
+                      <input type="hidden" name="clearUnread" value="true" />
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-700 transition hover:border-emerald-200"
+                      >
+                        Mark resolved
+                      </button>
+                    </form>
+                    <form action={`/api/threads/${activeThread.id}`} method="post">
+                      <input type="hidden" name="status" value={ThreadStatus.AWAITING_RESIDENT} />
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-amber-700 transition hover:border-amber-200"
+                      >
+                        Awaiting resident
+                      </button>
+                    </form>
+                    <form action={`/api/threads/${activeThread.id}`} method="post">
+                      <input type="hidden" name="status" value={ThreadStatus.FOLLOW_UP} />
+                      <input type="hidden" name="assign" value="me" />
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-700 transition hover:border-violet-200"
+                      >
+                        Follow up
+                      </button>
+                    </form>
+                    <form action={`/api/threads/${activeThread.id}`} method="post">
+                      <input type="hidden" name="clearUnread" value="true" />
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 transition hover:border-slate-300"
+                      >
+                        Mark all read
+                      </button>
+                    </form>
+                  </div>
                 </div>
                 <div className="space-y-5">
                   {activeThread.messages.map((message) => (
@@ -224,18 +501,33 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           )}
                         >
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <p className="font-semibold">
-                              AI Reply
-                              {message.aiReply.sent ? " › Sent" : message.aiReply.error ? " › Error" : " › Pending"}
-                            </p>
+                            <div className="space-y-1">
+                              <p className="font-semibold">
+                                AI Reply
+                                {message.aiReply.sent ? " - Sent" : message.aiReply.error ? " - Error" : " - Pending"}
+                              </p>
+                              {message.aiReply.createdAt ? (
+                                <p className="text-[11px] text-slate-500">
+                                  Drafted {message.aiReply.createdAt.toLocaleString()}
+                                </p>
+                              ) : null}
+                            </div>
                             <div className="flex flex-wrap gap-2">
+                              <form action={`/api/messages/${message.id}/retry-draft?variant=regenerate`} method="post">
+                                <button
+                                  type="submit"
+                                  className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 transition hover:border-blue-300"
+                                >
+                                  Regenerate
+                                </button>
+                              </form>
                               {message.aiReply.error ? (
-                                <form action={`/api/messages/${message.id}/retry-draft`} method="post">
+                                <form action={`/api/messages/${message.id}/retry-draft?variant=regenerate`} method="post">
                                   <button
                                     type="submit"
                                     className="inline-flex items-center gap-1 rounded-xl border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-700 transition hover:border-red-400 hover:bg-red-100"
                                   >
-                                    Retry draft
+                                    Retry
                                   </button>
                                 </form>
                               ) : null}
@@ -250,7 +542,51 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                                 </form>
                               ) : null}
                             </div>
-                        </div>
+                          </div>
+                          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-lg border border-slate-200 bg-white/80 p-3 shadow-sm">
+                              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Classification</p>
+                              <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-slate-700">
+                                <span className="inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-white">
+                                  {activeThread.category ?? "Uncategorized"}
+                                </span>
+                                <span className="inline-flex items-center rounded-full border border-slate-300 px-3 py-1">
+                                  Priority: {activeThread.priority ?? "Unset"}
+                                </span>
+                              </div>
+                              <p className="mt-2 text-[11px] text-slate-500">Set automatically by the AI classifier.</p>
+                              <div className="mt-3 space-y-2 text-[11px] text-slate-600">
+                                <p className="font-semibold uppercase tracking-[0.25em] text-slate-500">History</p>
+                                {activeThread.classifications?.length ? (
+                                  <div className="max-h-32 space-y-1 overflow-auto pr-1">
+                                    {activeThread.classifications.map((c) => (
+                                      <div
+                                        key={c.id}
+                                        className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-2 py-1"
+                                      >
+                                        <span className="text-[11px] font-semibold text-slate-800">
+                                          {`${c.category ?? "Uncategorized"} -> ${c.priority ?? "Unset"}`}
+                                        </span>
+                                        <span className="text-[11px] text-slate-500">
+                                          {new Date(c.createdAt).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-[11px] text-slate-500">No history yet.</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="rounded-lg border border-slate-200 bg-white/80 p-3 shadow-sm">
+                              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Signature</p>
+                              <p className="mt-1 text-sm font-semibold text-slate-800">{session.user?.name ?? "Community Manager"}</p>
+                              {session.user?.email ? (
+                                <p className="text-xs text-slate-500">{session.user.email}</p>
+                              ) : null}
+                              <p className="mt-2 text-[11px] text-slate-500">Appended to AI drafts when sending.</p>
+                            </div>
+                          </div>
                           <form action={`/api/messages/${message.id}/draft`} method="post" className="mt-3 space-y-2">
                             <textarea
                               name="replyText"
@@ -258,23 +594,13 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
                               rows={6}
                             />
-                            <div className="flex gap-2 justify-end">
+                            <div className="flex justify-end gap-2">
                               <button
                                 type="submit"
-                                className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 hover:text-slate-900 cursor-pointer"
+                                className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 hover:text-slate-900"
                               >
                                 Save draft
                               </button>
-                              {!message.aiReply.sent ? (
-                                <form action={`/api/messages/${message.id}/send`} method="post">
-                                  <button
-                                    type="submit"
-                                    className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500 cursor-pointer"
-                                  >
-                                    Send
-                                  </button>
-                                </form>
-                              ) : null}
                             </div>
                           </form>
                           {message.aiReply.error ? (
@@ -290,6 +616,39 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
           </GlassPanel>
         </main>
       </div>
+      {activeThread && latestAiReply?.aiReply ? (
+        <div className="fixed bottom-4 right-4 z-50 w-full max-w-md rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.15)]">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI Reply</p>
+              <p className="text-sm font-semibold text-slate-900 truncate">{activeThread.subject}</p>
+            </div>
+            {!latestAiReply.aiReply.sent ? (
+              <form action={`/api/messages/${latestAiReply.id}/send`} method="post">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500 cursor-pointer"
+                >
+                  Send
+                </button>
+              </form>
+            ) : (
+              <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-emerald-600">Sent</span>
+            )}
+          </div>
+          <div className="mt-3 max-h-40 overflow-auto rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-sm text-slate-700">
+            <pre className="whitespace-pre-wrap text-sm text-slate-800">{latestAiReply.aiReply.replyText}</pre>
+          </div>
+          <div className="mt-2 flex justify-end">
+            <a
+              href={`/app/hoa/${resolvedParams.hoaId}/inbox?thread=${activeThread.id}`}
+              className="text-xs font-semibold text-blue-600 underline"
+            >
+              View thread
+            </a>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

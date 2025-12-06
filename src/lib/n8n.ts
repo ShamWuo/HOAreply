@@ -18,6 +18,9 @@ export interface N8nWebhookPayload {
   receivedAt: string;
   managerName: string;
   hoaName: string;
+  variant?: string;
+  tone?: string;
+  length?: string;
   meta: {
     gmailAccountEmail: string;
   };
@@ -26,6 +29,8 @@ export interface N8nWebhookPayload {
 export interface N8nWebhookResponse {
   replyText: string;
   send?: boolean;
+  classification?: string;
+  priority?: string;
 }
 
 type N8nLogItem = {
@@ -91,6 +96,8 @@ export async function callN8nWebhook(payload: N8nWebhookPayload) {
     return {
       replyText: data.replyText,
       send: data.send ?? false,
+      classification: data.classification,
+      priority: data.priority,
     };
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {

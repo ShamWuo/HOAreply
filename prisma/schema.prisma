@@ -15,6 +15,7 @@ model User {
   createdAt    DateTime  @default(now())
   accounts     Account[]
   hoas         HOA[]
+  assignedThreads EmailThread[] @relation("ThreadAssignedToUser")
   sessions     Session[]
 }
 
@@ -26,6 +27,7 @@ model HOA {
   threads      EmailThread[]
   gmailAccount GmailAccount?
   user         User          @relation(fields: [userId], references: [id])
+  residents    Resident[]
 }
 
 model GmailAccount {
@@ -37,8 +39,11 @@ model GmailAccount {
   expiryDate   DateTime
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @default(now()) @updatedAt
+  lastPolledAt DateTime?
+  lastPollError String?
   threads      EmailThread[]
   hoa          HOA           @relation(fields: [hoaId], references: [id], onDelete: Cascade)
+  pollRuns     PollRun[]
 }
 
 model EmailThread {
@@ -47,13 +52,21 @@ model EmailThread {
   gmailAccountId String?
   gmailThreadId  String         @unique
   subject        String
+  status         ThreadStatus   @default(NEW)
+  assignedToUserId String?
+  unreadCount    Int            @default(0)
+  category       String?
+  priority       String?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @default(now()) @updatedAt
   messages       EmailMessage[]
   gmailAccount   GmailAccount?  @relation(fields: [gmailAccountId], references: [id])
   hoa            HOA            @relation(fields: [hoaId], references: [id], onDelete: Cascade)
+  assignedToUser User?          @relation("ThreadAssignedToUser", fields: [assignedToUserId], references: [id])
+  classifications ThreadClassificationHistory[]
 
   @@index([hoaId])
+  @@index([status])
 }
 
 model EmailMessage {
@@ -68,9 +81,29 @@ model EmailMessage {
   receivedAt     DateTime
   metaJson       Json?
   aiReply        AIReply?
+  residentId     String?
   thread         EmailThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  resident       Resident?        @relation(fields: [residentId], references: [id])
 
   @@index([threadId])
+  @@index([residentId])
+}
+
+model Resident {
+  id             String   @id @default(cuid())
+  hoaId          String
+  email          String
+  name           String?
+  firstMessageAt DateTime @default(now())
+  lastMessageAt  DateTime @default(now())
+  messageCount   Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+  hoa            HOA      @relation(fields: [hoaId], references: [id], onDelete: Cascade)
+  messages       EmailMessage[]
+
+  @@unique([hoaId, email])
+  @@index([hoaId])
 }
 
 model AIReply {
@@ -82,6 +115,31 @@ model AIReply {
   createdAt DateTime     @default(now())
   sentAt    DateTime?
   message   EmailMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}
+
+model ThreadClassificationHistory {
+  id        String   @id @default(cuid())
+  threadId  String
+  category  String?
+  priority  String?
+  createdAt DateTime @default(now())
+  thread    EmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+}
+
+model PollRun {
+  id            String       @id @default(cuid())
+  gmailAccountId String
+  startedAt     DateTime     @default(now())
+  completedAt   DateTime?
+  status        String
+  processedCount Int         @default(0)
+  error         String?
+  gmailAccount  GmailAccount @relation(fields: [gmailAccountId], references: [id], onDelete: Cascade)
+
+  @@index([gmailAccountId])
+  @@index([startedAt])
 }
 
 model JobLock {
@@ -128,4 +186,13 @@ model VerificationToken {
 enum MessageDirection {
   INCOMING
   OUTGOING
+}
+
+enum ThreadStatus {
+  NEW
+  PENDING
+  AWAITING_RESIDENT
+  FOLLOW_UP
+  RESOLVED
+  ERROR
 }

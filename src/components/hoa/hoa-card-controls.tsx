@@ -73,19 +73,19 @@ export function HoaCardControls({ hoaId, initialName, inboxUrl, detailsUrl }: Pr
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 hover:text-slate-900 disabled:opacity-60 cursor-pointer"
+          className="inline-flex h-9 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 hover:text-slate-900 disabled:opacity-60 cursor-pointer"
         >
           {isSaving ? "Saving..." : "Save"}
         </button>
         <a
           href={detailsUrl}
-          className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 hover:text-slate-900"
+          className="inline-flex h-9 items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 hover:text-slate-900"
         >
           Details
         </a>
         <a
           href={inboxUrl}
-          className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500"
+          className="inline-flex h-9 items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500"
         >
           Inbox
         </a>
@@ -93,7 +93,7 @@ export function HoaCardControls({ hoaId, initialName, inboxUrl, detailsUrl }: Pr
           type="button"
           onClick={handleDelete}
           disabled={isDeleting}
-          className="inline-flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-100 disabled:opacity-60 cursor-pointer"
+          className="inline-flex h-9 items-center gap-1 rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 shadow-sm transition hover:border-red-300 hover:bg-red-100 disabled:opacity-60 cursor-pointer"
         >
           {isDeleting ? "Deleting..." : "Delete"}
         </button>

@@ -1,8 +1,14 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { assertHoaOwnership } from "@/lib/hoa";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { pillButtonClasses } from "@/components/ui/pill-button";
+
+function clamp(text: string | null | undefined, max = 140) {
+  if (!text) return "";
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
 
 interface HoaDetailPageProps {
   params: Promise<{ hoaId: string }>;
@@ -16,6 +22,13 @@ export default async function HoaDetailPage({ params }: HoaDetailPageProps) {
   }
 
   const hoa = await assertHoaOwnership(hoaId, session.user.id);
+  const pollRuns = hoa.gmailAccount
+    ? await prisma.pollRun.findMany({
+        where: { gmailAccountId: hoa.gmailAccount.id },
+        orderBy: { startedAt: "desc" },
+        take: 5,
+      })
+    : [];
   const status = hoa.gmailAccount
     ? {
         label: "Gmail connected",
@@ -59,6 +72,72 @@ export default async function HoaDetailPage({ params }: HoaDetailPageProps) {
               <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Gmail status</p>
               <p className="mt-2 text-lg font-semibold text-slate-900">{status.label}</p>
               <p className="text-sm text-slate-500">{status.helper}</p>
+              {hoa.gmailAccount ? (
+                <div className="mt-3 space-y-1 text-sm text-slate-600">
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Sync health</p>
+                  {hoa.gmailAccount.lastPollError ? (
+                    <p
+                      className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800"
+                      title={hoa.gmailAccount.lastPollError}
+                    >
+                      Poll error: {clamp(hoa.gmailAccount.lastPollError, 120)}
+                    </p>
+                  ) : (
+                    <p className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
+                      {hoa.gmailAccount.lastPolledAt
+                        ? `Last polled ${hoa.gmailAccount.lastPolledAt.toLocaleString()}`
+                        : "Not yet polled"}
+                    </p>
+                  )}
+                  {hoa.gmailAccount.lastPollError ? (
+                    <a
+                      href={`/connect/gmail?hoaId=${hoa.id}`}
+                      className="inline-flex w-fit items-center gap-1 rounded-lg border border-red-200 bg-white px-3 py-1 text-xs font-semibold text-red-700 transition hover:border-red-300"
+                    >
+                      Reconnect Gmail
+                    </a>
+                  ) : null}
+                  {pollRuns.length ? (
+                    <div className="mt-3 rounded-lg border border-slate-200 bg-white/70 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Recent polls</p>
+                      <div className="mt-2 space-y-2">
+                        {pollRuns.map((run) => {
+                          const badgeClass =
+                            run.status === "success"
+                              ? "bg-emerald-100 text-emerald-800"
+                              : run.status === "error"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-slate-100 text-slate-700";
+                          return (
+                            <div
+                              key={run.id}
+                              className="flex items-start justify-between rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-700"
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-semibold">{new Date(run.startedAt).toLocaleString()}</span>
+                                <span className="text-[11px] text-slate-500">
+                                  {run.completedAt ? `Completed ${new Date(run.completedAt).toLocaleTimeString()}` : "In progress"}
+                                </span>
+                              </div>
+                              <div className="flex flex-col items-end gap-1 text-right">
+                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 font-semibold uppercase tracking-[0.2em] ${badgeClass}`}>
+                                  {run.status}
+                                </span>
+                                <span className="text-[11px] text-slate-500">{run.processedCount} msgs</span>
+                                {run.error ? (
+                                  <span className="max-w-[14rem] truncate text-[11px] font-semibold text-red-700" title={run.error}>
+                                    {clamp(run.error, 80)}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </GlassPanel>
           </div>
           <div className="mt-8 flex flex-wrap gap-3">

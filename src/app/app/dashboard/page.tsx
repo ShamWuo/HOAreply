@@ -1,9 +1,15 @@
+import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { listUserHoas } from "@/lib/hoa";
+import { listUserHoas, HoaWithRelations } from "@/lib/hoa";
 import { CreateHoaForm } from "@/components/hoa/create-hoa-form";
 import { SignOutButton } from "@/components/auth/signout-button";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { HoaCardControls } from "@/components/hoa/hoa-card-controls";
+
+function clamp(text: string | null | undefined, max = 120) {
+  if (!text) return "";
+  return text.length > max ? `${text.slice(0, max)}...` : text;
+}
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -11,7 +17,7 @@ export default async function DashboardPage() {
     return null;
   }
 
-  const hoas = await listUserHoas(session.user.id);
+  const hoas: HoaWithRelations[] = await listUserHoas(session.user.id);
   const connectedCount = hoas.filter((hoa) => Boolean(hoa.gmailAccount)).length;
   const pendingCount = Math.max(hoas.length - connectedCount, 0);
   const stats = [
@@ -47,13 +53,25 @@ export default async function DashboardPage() {
                 Monitor AI replies, Gmail health, and HOAs from one premium workspace.
               </p>
             </div>
-            <SignOutButton />
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/app/polls"
+                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-700 shadow-sm transition hover:border-blue-200"
+              >
+                Poll history
+              </Link>
+              <SignOutButton />
+            </div>
           </div>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {stats.map((stat) => (
-              <GlassPanel key={stat.label} variant="frosted" className="px-5 py-6 text-slate-700">
+              <GlassPanel
+                key={stat.label}
+                variant="frosted"
+                className="flex min-h-[140px] flex-col justify-between px-5 py-5 text-slate-700"
+              >
                 <p className="text-xs uppercase tracking-[0.35em] text-slate-500">{stat.label}</p>
-                <p className="mt-2 text-3xl font-semibold text-slate-900">{stat.value}</p>
+                <p className="text-3xl font-semibold text-slate-900">{stat.value}</p>
                 <p className="text-sm text-slate-500">{stat.helper}</p>
               </GlassPanel>
             ))}
@@ -63,13 +81,15 @@ export default async function DashboardPage() {
         <section className="grid gap-6 lg:grid-cols-[1.7fr_1fr]">
           <GlassPanel className="p-6">
             <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Your HOAs</p>
-                <h2 className="text-2xl font-semibold text-slate-900">Realtime Gmail sync</h2>
+              <div className="flex items-center gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Your HOAs</p>
+                  <h2 className="text-2xl font-semibold text-slate-900">Live Gmail Connections</h2>
+                </div>
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-slate-700">
+                  {hoas.length} total
+                </span>
               </div>
-              <span className="rounded-full bg-slate-900/90 px-4 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-white">
-                {hoas.length} total
-              </span>
             </div>
             <div className="mt-6 space-y-4">
               {hoas.length === 0 ? (
@@ -80,21 +100,53 @@ export default async function DashboardPage() {
                 hoas.map((hoa) => (
                   <div
                     key={hoa.id}
-                    className="flex flex-col gap-4 rounded-[28px] border border-slate-100 bg-white/90 p-5 text-sm text-slate-600 shadow-[0_15px_40px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:border-blue-200 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-3 rounded-[28px] border border-slate-100 bg-white/90 p-5 text-sm text-slate-600 shadow-[0_15px_40px_rgba(15,23,42,0.08)] transition hover:-translate-y-0.5 hover:border-blue-200 sm:flex-row sm:items-center sm:justify-between"
                   >
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-lg font-semibold text-slate-900">{hoa.name}</p>
-                      <div className="mt-1 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.35em]">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 ${
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.3em] ${
                             hoa.gmailAccount ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-800"
                           }`}
                         >
                           {hoa.gmailAccount ? "Gmail connected" : "Needs connect"}
                         </span>
-                        <span className="text-slate-400">ID {hoa.id.slice(0, 6)}</span>
+                        <span className="text-[11px] uppercase tracking-[0.3em] text-slate-400">
+                          ID {hoa.id.slice(0, 6)}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {hoa.gmailAccount ? (
+                          hoa.gmailAccount.lastPollError ? (
+                            <span
+                              className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700 ring-1 ring-red-100"
+                              title={hoa.gmailAccount.lastPollError}
+                            >
+                              Poll error: {clamp(hoa.gmailAccount.lastPollError, 80)}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-100">
+                              {hoa.gmailAccount.lastPolledAt
+                                ? `Last polled ${new Date(hoa.gmailAccount.lastPolledAt).toLocaleString()}`
+                                : "Not yet polled"}
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-700">
+                            Connect Gmail to start sync
+                          </span>
+                        )}
                       </div>
                     </div>
+                    {hoa.gmailAccount?.lastPollError ? (
+                      <Link
+                        href={`/connect/gmail?hoaId=${hoa.id}`}
+                        className="rounded-xl border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 shadow-sm transition hover:border-red-300"
+                      >
+                        Reconnect
+                      </Link>
+                    ) : null}
                     <HoaCardControls
                       hoaId={hoa.id}
                       initialName={hoa.name}

@@ -1,16 +1,30 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+
+const hoaWithRelations = Prisma.validator<Prisma.HOADefaultArgs>()({
+  include: {
+    gmailAccount: {
+      select: {
+        id: true,
+        email: true,
+        lastPolledAt: true,
+        lastPollError: true,
+      },
+    },
+    threads: {
+      select: {
+        id: true,
+      },
+    },
+  },
+});
+
+export type HoaWithRelations = Prisma.HOAGetPayload<typeof hoaWithRelations>;
 
 export function listUserHoas(userId: string) {
   return prisma.hOA.findMany({
     where: { userId },
-    include: {
-      gmailAccount: true,
-      threads: {
-        select: {
-          id: true,
-        },
-      },
-    },
+    ...hoaWithRelations,
     orderBy: { createdAt: "desc" },
   });
 }

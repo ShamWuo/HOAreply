@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
-import { MessageDirection } from "@prisma/client";
+import { MessageDirection, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { callN8nWebhook } from "@/lib/n8n";
 import { sendGmailReply } from "@/lib/gmail";
 import { logError, logInfo } from "@/lib/logger";
 
-export async function POST(_: Request, { params }: { params: Promise<{ messageId: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ messageId: string }> }) {
   const { messageId } = await params;
+  const url = new URL(request.url);
+  const variant = url.searchParams.get("variant") ?? undefined;
+  const tone = url.searchParams.get("tone") ?? undefined;
+  const length = url.searchParams.get("length") ?? undefined;
 
   const message = await prisma.emailMessage.findUnique({
     where: { id: messageId },
@@ -47,6 +51,9 @@ export async function POST(_: Request, { params }: { params: Promise<{ messageId
       receivedAt: message.receivedAt.toISOString(),
       managerName: message.thread.hoa.user?.name ?? message.thread.hoa.user?.email ?? "Manager",
       hoaName: message.thread.hoa.name,
+      variant,
+      tone,
+      length,
       meta: {
         gmailAccountEmail: account.email,
       },
@@ -65,6 +72,24 @@ export async function POST(_: Request, { params }: { params: Promise<{ messageId
         sent: false,
       },
     });
+
+    if (webhookResponse.classification || webhookResponse.priority) {
+      const category = webhookResponse.classification ?? null;
+      const priority = webhookResponse.priority ?? null;
+      await prisma.$transaction([
+        prisma.emailThread.update({
+          where: { id: message.threadId },
+          data: { category, priority } as Prisma.EmailThreadUpdateInput,
+        }),
+        prisma.threadClassificationHistory.create({
+          data: {
+            threadId: message.threadId,
+            category,
+            priority,
+          },
+        }),
+      ]);
+    }
 
     if (webhookResponse.send) {
       await sendGmailReply({
