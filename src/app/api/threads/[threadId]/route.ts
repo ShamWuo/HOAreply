@@ -76,7 +76,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ thr
     });
     logInfo("thread update", { threadId, status: data.status, assignedToUserId: data.assignedToUserId });
     const url = new URL(`/app/hoa/${thread.hoaId}/inbox?thread=${thread.id}`, process.env.APP_BASE_URL ?? "http://localhost:3000");
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(url, 303);
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     logError("thread update failed", { threadId, error: errMsg });

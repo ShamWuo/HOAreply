@@ -369,26 +369,29 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         </span>
                       )}
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
+                  <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-100 bg-white/80 p-3 text-xs shadow-sm">
                     <form action={`/api/threads/${activeThread.id}`} method="post" className="flex items-center gap-2">
                       <label htmlFor="status" className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                         Status
                       </label>
-                      <select
-                        id="status"
-                        name="status"
-                        defaultValue={activeThread.status ?? ThreadStatus.NEW}
-                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm focus:border-blue-300 focus:outline-none"
-                      >
-                        {THREAD_STATUS_OPTIONS.map((status) => (
-                          <option key={status} value={status}>
-                            {formatStatus(status)}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <select
+                          id="status"
+                          name="status"
+                          defaultValue={activeThread.status ?? ThreadStatus.NEW}
+                          className="appearance-none rounded-lg border border-slate-200 bg-gradient-to-r from-white to-slate-50 px-3 py-2 pr-9 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        >
+                          {THREAD_STATUS_OPTIONS.map((status) => (
+                            <option key={status} value={status}>
+                              {formatStatus(status)}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">▾</span>
+                      </div>
                       <button
                         type="submit"
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 transition hover:border-blue-200"
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
                       >
                         Update
                       </button>
@@ -397,22 +400,25 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       <label htmlFor="assignee" className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
                         Assignee
                       </label>
-                      <select
-                        id="assignee"
-                        name="assignUserId"
-                        defaultValue={activeThread.assignedToUserId ?? ""}
-                        className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-800 shadow-sm focus:border-blue-300 focus:outline-none"
-                      >
-                        <option value="">Unassigned</option>
-                        {users.map((user) => (
-                          <option key={user.id} value={user.id}>
-                            {user.name ?? user.email}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <select
+                          id="assignee"
+                          name="assignUserId"
+                          defaultValue={activeThread.assignedToUserId ?? ""}
+                          className="appearance-none rounded-lg border border-slate-200 bg-gradient-to-r from-white to-slate-50 px-3 py-2 pr-9 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                        >
+                          <option value="">Unassigned</option>
+                          {users.map((user) => (
+                            <option key={user.id} value={user.id}>
+                              {user.name ?? user.email}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">▾</span>
+                      </div>
                       <button
                         type="submit"
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 transition hover:border-blue-200"
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
                       >
                         Save
                       </button>
@@ -425,7 +431,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       )}
                       <button
                         type="submit"
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 transition hover:border-blue-200"
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-200 hover:bg-blue-50 hover:text-slate-900"
                       >
                         {activeThread.assignedToUserId === session.user?.id ? "Unassign" : "Assign to me"}
                       </button>
@@ -435,7 +441,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       <input type="hidden" name="clearUnread" value="true" />
                       <button
                         type="submit"
-                        className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-700 transition hover:border-emerald-200"
+                        className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-700 shadow-sm transition hover:-translate-y-[1px] hover:border-emerald-300 hover:bg-emerald-100"
                       >
                         Mark resolved
                       </button>
@@ -444,7 +450,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       <input type="hidden" name="status" value={ThreadStatus.AWAITING_RESIDENT} />
                       <button
                         type="submit"
-                        className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-amber-700 transition hover:border-amber-200"
+                        className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-amber-700 shadow-sm transition hover:-translate-y-[1px] hover:border-amber-300 hover:bg-amber-100"
                       >
                         Awaiting resident
                       </button>
@@ -454,7 +460,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       <input type="hidden" name="assign" value="me" />
                       <button
                         type="submit"
-                        className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-700 transition hover:border-violet-200"
+                        className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-700 shadow-sm transition hover:-translate-y-[1px] hover:border-violet-300 hover:bg-violet-100"
                       >
                         Follow up
                       </button>
@@ -463,7 +469,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       <input type="hidden" name="clearUnread" value="true" />
                       <button
                         type="submit"
-                        className="rounded-lg border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 transition hover:border-slate-300"
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-100"
                       >
                         Mark all read
                       </button>
@@ -617,36 +623,59 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
         </main>
       </div>
       {activeThread && latestAiReply?.aiReply ? (
-        <div className="fixed bottom-4 right-4 z-50 w-full max-w-md rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.15)]">
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI Reply</p>
-              <p className="text-sm font-semibold text-slate-900 truncate">{activeThread.subject}</p>
+        <div className="fixed bottom-4 right-4 z-50 w-[clamp(360px,46vw,840px)] max-w-[90vw] rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.15)]">
+          <details open className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-1 py-0.5 text-slate-800 transition hover:text-slate-900">
+              <div className="min-w-0">
+                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI Reply</p>
+                <p className="truncate text-sm font-semibold text-slate-900" title={activeThread.subject}>
+                  {activeThread.subject}
+                </p>
+              </div>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500 group-open:rotate-0 group-open:translate-y-0">
+                {latestAiReply.aiReply.sent ? "Sent" : "Draft"}
+              </span>
+            </summary>
+
+            <div className="mt-3 space-y-3 rounded-xl bg-slate-50/80 p-3 shadow-inner">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                  <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-blue-800">Auto-draft</span>
+                  <span className="inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-slate-700">Fits text</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <form action={`/api/messages/${latestAiReply.id}/retry-draft?variant=regenerate`} method="post">
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-300 hover:text-slate-900"
+                    >
+                      Regenerate
+                    </button>
+                  </form>
+                  {!latestAiReply.aiReply.sent ? (
+                    <form action={`/api/messages/${latestAiReply.id}/send`} method="post">
+                      <button
+                        type="submit"
+                        className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500"
+                      >
+                        Send
+                      </button>
+                    </form>
+                  ) : null}
+                  <a
+                    href={`/app/hoa/${resolvedParams.hoaId}/inbox?thread=${activeThread.id}`}
+                    className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm transition hover:border-blue-300"
+                  >
+                    View thread
+                  </a>
+                </div>
+              </div>
+
+              <div className="max-h-[60vh] min-h-[220px] overflow-auto rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm text-slate-800">
+                <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{latestAiReply.aiReply.replyText}</pre>
+              </div>
             </div>
-            {!latestAiReply.aiReply.sent ? (
-              <form action={`/api/messages/${latestAiReply.id}/send`} method="post">
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500 cursor-pointer"
-                >
-                  Send
-                </button>
-              </form>
-            ) : (
-              <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-emerald-600">Sent</span>
-            )}
-          </div>
-          <div className="mt-3 max-h-40 overflow-auto rounded-xl border border-slate-100 bg-slate-50/80 p-3 text-sm text-slate-700">
-            <pre className="whitespace-pre-wrap text-sm text-slate-800">{latestAiReply.aiReply.replyText}</pre>
-          </div>
-          <div className="mt-2 flex justify-end">
-            <a
-              href={`/app/hoa/${resolvedParams.hoaId}/inbox?thread=${activeThread.id}`}
-              className="text-xs font-semibold text-blue-600 underline"
-            >
-              View thread
-            </a>
-          </div>
+          </details>
         </div>
       ) : null}
     </div>

@@ -54,7 +54,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ mes
 
     logInfo("manual send success", { messageId, threadId: message.threadId });
     const redirectUrl = new URL(`/app/hoa/${message.thread.hoaId}/inbox?thread=${message.threadId}`, request.url);
-    return NextResponse.redirect(redirectUrl);
+    return NextResponse.redirect(redirectUrl, 303);
   } catch (error) {
     const err = error instanceof Error ? error.message : "Send failed";
     logError("manual send failed", { messageId, error: err });
