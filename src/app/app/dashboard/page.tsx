@@ -29,12 +29,12 @@ export default async function DashboardPage() {
     {
       label: "Gmail live",
       value: connectedCount,
-      helper: "Ready for AI replies",
+      helper: "Ready to send",
     },
     {
       label: "Awaiting connect",
       value: pendingCount,
-      helper: "Needs OAuth",
+      helper: "Connect Gmail now",
     },
   ];
 
@@ -49,9 +49,7 @@ export default async function DashboardPage() {
               <h1 className="text-4xl font-semibold text-slate-900">
                 Welcome back, {session.user.name ?? session.user.email}
               </h1>
-              <p className="text-base text-slate-500">
-                Monitor AI replies, Gmail health, and HOAs from one premium workspace.
-              </p>
+              <p className="text-base text-slate-700">Connect. Review. Send. Fix issues fast.</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Link
@@ -63,6 +61,22 @@ export default async function DashboardPage() {
               <SignOutButton />
             </div>
           </div>
+          {pendingCount > 0 ? (
+            <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900 shadow-inner">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-base font-semibold">{pendingCount} inbox{pendingCount > 1 ? "es" : ""} idle — connect Gmail to activate AI replies.</p>
+                  <p className="text-[13px] text-amber-800">Finish setup to start drafting and sending automatically.</p>
+                </div>
+                <Link
+                  href={`/connect/gmail${hoas.find((h) => !h.gmailAccount) ? `?hoaId=${hoas.find((h) => !h.gmailAccount)?.id}` : ""}`}
+                  className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.25em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
+                >
+                  Finish connecting →
+                </Link>
+              </div>
+            </div>
+          ) : null}
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {stats.map((stat) => (
               <GlassPanel
@@ -139,20 +153,34 @@ export default async function DashboardPage() {
                         )}
                       </div>
                     </div>
-                    {hoa.gmailAccount?.lastPollError ? (
-                      <Link
-                        href={`/connect/gmail?hoaId=${hoa.id}`}
-                        className="rounded-xl border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 shadow-sm transition hover:border-red-300"
-                      >
-                        Reconnect
-                      </Link>
-                    ) : null}
-                    <HoaCardControls
-                      hoaId={hoa.id}
-                      initialName={hoa.name}
-                      detailsUrl={`/app/hoa/${hoa.id}`}
-                      inboxUrl={`/app/hoa/${hoa.id}/inbox`}
-                    />
+                    {hoa.gmailAccount ? (
+                      <>
+                        {hoa.gmailAccount.lastPollError ? (
+                          <Link
+                            href={`/connect/gmail?hoaId=${hoa.id}`}
+                            className="rounded-xl border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 shadow-sm transition hover:border-red-300"
+                          >
+                            Reconnect
+                          </Link>
+                        ) : null}
+                        <HoaCardControls
+                          hoaId={hoa.id}
+                          initialName={hoa.name}
+                          detailsUrl={`/app/hoa/${hoa.id}`}
+                          inboxUrl={`/app/hoa/${hoa.id}/inbox`}
+                        />
+                      </>
+                    ) : (
+                      <div className="flex flex-col gap-2 sm:items-end sm:text-right">
+                        <Link
+                          href={`/connect/gmail?hoaId=${hoa.id}`}
+                          className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.25em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
+                        >
+                          Connect Gmail
+                        </Link>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">Inbox locked until connected</p>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -163,9 +191,7 @@ export default async function DashboardPage() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Create new HOA</p>
               <h3 className="mt-2 text-2xl font-semibold text-slate-900">Launch an AI inbox in 3 steps</h3>
-              <p className="mt-1 text-sm text-slate-600">
-                Provision Gmail, sync your CC&Rs into the copilots, and keep your n8n flows notified.
-              </p>
+              <p className="mt-1 text-sm text-slate-700">Name it, connect Gmail, turn on replies. No fluff.</p>
             </div>
             <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 text-sm text-slate-700">
               <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Playbook</p>

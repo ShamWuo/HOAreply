@@ -366,10 +366,10 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
             ) : (
               <div className="space-y-6">
                 <div className="rounded-2xl border border-slate-100 bg-white/95 p-5 shadow-sm">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div className="space-y-2 min-w-0">
+                  <div className="grid items-start gap-4 lg:grid-cols-[1fr_auto]">
+                    <div className="min-w-0 space-y-2">
                       <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Thread</p>
-                      <h1 className="text-3xl font-semibold text-slate-900 leading-tight">{activeThread.subject}</h1>
+                      <h1 className="max-w-5xl text-3xl font-semibold leading-tight text-slate-900 text-balance">{activeThread.subject}</h1>
                       <p className="text-sm text-slate-500">{hoa.name} • {hoa.gmailAccount?.email ?? "Address unavailable"}</p>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
                         <span
@@ -403,7 +403,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         ) : null}
                       </div>
                     </div>
-                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-right text-xs text-slate-600 lg:ml-auto">
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-right text-xs text-slate-600 lg:justify-self-end">
                       <p className="font-semibold text-slate-800">HOA Context</p>
                         {residentContext ? (
                           <div className="space-y-1 text-right">
