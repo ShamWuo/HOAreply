@@ -9,7 +9,8 @@ import { env } from "@/lib/env";
 
 const DEFAULT_QUERY = "label:INBOX newer_than:7d";
 const POLL_JOB_ID = "poll-gmail";
-const POLL_LOCK_WINDOW_MS = Math.max(env.GMAIL_POLL_INTERVAL_MINUTES, 1) * 60 * 1000;
+const POLL_INTERVAL_MINUTES = Math.max(env.GMAIL_POLL_INTERVAL_MINUTES, 5);
+const POLL_LOCK_WINDOW_MS = POLL_INTERVAL_MINUTES * 60 * 1000;
 
 type PollSummary = {
   accountId: string;
