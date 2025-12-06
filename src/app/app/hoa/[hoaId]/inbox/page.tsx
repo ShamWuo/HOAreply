@@ -140,12 +140,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
   const minutesSaved = Math.min(24, Math.max(8, Math.round(((latestAiReply?.aiReply?.replyText?.length ?? 200) / 120) + 7)));
   const canonicalStatus = activeThread ? CANONICAL_STATUS_MAP[activeThread.status ?? ThreadStatus.NEW] : "OPEN";
   const isWaiting = canonicalStatus === "WAITING";
-  const isClosed = canonicalStatus === "CLOSED";
   const marketingActive = activeThread ? isMarketingThread(activeThread) : false;
-  const isSafeToSend = confidenceLevel === "safe" && Boolean(latestAiReply?.aiReply);
-  const showStatusControls = !isSafeToSend || Boolean(latestAiReply?.aiReply?.sent);
-  const isUnassignedAndUnopened =
-    !activeThread?.assignedToUserId && canonicalStatus === "OPEN" && (activeThread?.unreadCount ?? 0) > 0;
   const confidenceLevel = latestAiReply?.aiReply
     ? /legal|attorney|sue|liability/i.test(latestAiReply.aiReply.replyText)
       ? "needs-review"
@@ -153,6 +148,10 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
         ? "caution"
         : "safe"
     : "unknown";
+  const isSafeToSend = confidenceLevel === "safe" && Boolean(latestAiReply?.aiReply);
+  const showStatusControls = !isSafeToSend || Boolean(latestAiReply?.aiReply?.sent);
+  const isUnassignedAndUnopened =
+    !activeThread?.assignedToUserId && canonicalStatus === "OPEN" && (activeThread?.unreadCount ?? 0) > 0;
   const success = Boolean(resolvedSearchParams?.success);
   const errorMsg = resolvedSearchParams?.message;
 
