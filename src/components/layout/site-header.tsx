@@ -4,12 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 
-const navLinks = [
+const marketingNavLinks = [
   { label: "Product", href: "/#features" },
   { label: "How it works", href: "/#workflow" },
   { label: "Pricing", href: "/#pricing" },
   { label: "Security", href: "/#security" },
   { label: "FAQ", href: "/#faq" },
+];
+
+const opsNavLinks = [
+  { label: "Inbox", href: "/app/dashboard" },
+  { label: "Automations", href: "/app/automations" },
+  { label: "Templates", href: "/app/templates" },
+  { label: "Audit Log", href: "/app/audit" },
+  { label: "Settings", href: "/app/settings" },
 ];
 
 export function SiteHeader() {
@@ -42,7 +50,7 @@ export function SiteHeader() {
           </div>
         </Link>
         <nav className="hidden items-center gap-8 md:flex">
-          {navLinks.map((link) => (
+          {(isAuthed ? opsNavLinks : marketingNavLinks).map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -108,7 +116,7 @@ export function SiteHeader() {
         <div className="md:hidden">
           <div className="mx-4 mb-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
             <nav className="flex flex-col gap-4">
-              {navLinks.map((link) => (
+              {(isAuthed ? opsNavLinks : marketingNavLinks).map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}

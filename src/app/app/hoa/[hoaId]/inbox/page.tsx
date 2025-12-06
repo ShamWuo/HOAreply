@@ -71,6 +71,7 @@ async function fetchThreads(hoaId: string) {
         orderBy: { receivedAt: "asc" },
         include: {
           aiReply: true,
+          resident: true,
         },
       },
       assignedToUser: true,
@@ -92,17 +93,17 @@ async function fetchUsers() {
 }
 
 function threadStatusStyle(status: ThreadStatus, isActive: boolean) {
-  if (status === ThreadStatus.ERROR) return "bg-red-600 text-white";
-  if (status === ThreadStatus.NEW) return isActive ? "bg-white/20 text-white" : "bg-blue-600 text-white";
-  if (status === ThreadStatus.PENDING) return isActive ? "bg-white/20 text-white" : "bg-amber-500 text-white";
-  if (status === ThreadStatus.AWAITING_RESIDENT) return isActive ? "bg-white/20 text-white" : "bg-slate-800 text-white";
-  if (status === ThreadStatus.FOLLOW_UP) return isActive ? "bg-white/20 text-white" : "bg-violet-600 text-white";
-  if (status === ThreadStatus.RESOLVED) return isActive ? "bg-white/20 text-white" : "bg-emerald-600 text-white";
+  const canonical = CANONICAL_STATUS_MAP[status];
+  if (canonical === "NEW") return isActive ? "bg-white/20 text-white" : "bg-blue-600 text-white";
+  if (canonical === "WAITING_ON_RESIDENT") return isActive ? "bg-white/20 text-white" : "bg-amber-500 text-white";
+  if (canonical === "WAITING_ON_HOA") return isActive ? "bg-white/20 text-white" : "bg-slate-800 text-white";
+  if (canonical === "INTERNAL_FYI") return isActive ? "bg-white/20 text-white" : "bg-violet-600 text-white";
+  if (canonical === "CLOSED") return isActive ? "bg-white/20 text-white" : "bg-emerald-600 text-white";
   return isActive ? "bg-white/20 text-white" : "bg-slate-800 text-white";
 }
 
 function formatStatus(status: ThreadStatus) {
-  return status.replace(/_/g, " ").toLowerCase().replace(/^./, (c) => c.toUpperCase());
+  return CANONICAL_STATUS_LABEL[CANONICAL_STATUS_MAP[status]];
 }
 
 function displayUser(user: { name: string | null; email: string } | null | undefined, selfId: string | undefined) {
@@ -119,11 +120,37 @@ function userInitial(user: { name: string | null; email: string } | null | undef
 
 const THREAD_STATUS_OPTIONS: ThreadStatus[] = [
   ThreadStatus.NEW,
-  ThreadStatus.PENDING,
   ThreadStatus.AWAITING_RESIDENT,
+  ThreadStatus.PENDING,
   ThreadStatus.FOLLOW_UP,
   ThreadStatus.RESOLVED,
-  ThreadStatus.ERROR,
+];
+
+type CanonicalStatus = "NEW" | "WAITING_ON_RESIDENT" | "WAITING_ON_HOA" | "INTERNAL_FYI" | "CLOSED";
+
+const CANONICAL_STATUS_MAP: Record<ThreadStatus, CanonicalStatus> = {
+  [ThreadStatus.NEW]: "NEW",
+  [ThreadStatus.AWAITING_RESIDENT]: "WAITING_ON_RESIDENT",
+  [ThreadStatus.PENDING]: "WAITING_ON_HOA",
+  [ThreadStatus.FOLLOW_UP]: "INTERNAL_FYI",
+  [ThreadStatus.RESOLVED]: "CLOSED",
+  [ThreadStatus.ERROR]: "INTERNAL_FYI",
+};
+
+const CANONICAL_STATUS_LABEL: Record<CanonicalStatus, string> = {
+  NEW: "New",
+  WAITING_ON_RESIDENT: "Waiting on Resident",
+  WAITING_ON_HOA: "Waiting on HOA",
+  INTERNAL_FYI: "Internal / FYI",
+  CLOSED: "Closed",
+};
+
+const CANONICAL_STATUS_OPTIONS = [
+  { label: CANONICAL_STATUS_LABEL.NEW, value: ThreadStatus.NEW },
+  { label: CANONICAL_STATUS_LABEL.WAITING_ON_RESIDENT, value: ThreadStatus.AWAITING_RESIDENT },
+  { label: CANONICAL_STATUS_LABEL.WAITING_ON_HOA, value: ThreadStatus.PENDING },
+  { label: CANONICAL_STATUS_LABEL.INTERNAL_FYI, value: ThreadStatus.FOLLOW_UP },
+  { label: CANONICAL_STATUS_LABEL.CLOSED, value: ThreadStatus.RESOLVED },
 ];
 
 export default async function InboxPage({ params, searchParams }: InboxPageProps) {
@@ -244,10 +271,19 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                 const badge = (() => {
                   if (!lastMessage?.aiReply) return "";
                   if (lastMessage.aiReply.error) return "Error";
-                  if (!lastMessage.aiReply.sent) return "Pending";
+                  if (!lastMessage.aiReply.sent) return "Draft";
                   return "Sent";
                 })();
                 const isActive = activeThread && thread.id === activeThread.id;
+                const isMarketing = (thread.category ?? "").toLowerCase().includes("marketing") || (thread.category ?? "").toLowerCase().includes("newsletter");
+                const needsAttention = thread.unreadCount > 0 || CANONICAL_STATUS_MAP[thread.status] !== "CLOSED";
+                const statusIcon = {
+                  NEW: "●",
+                  WAITING_ON_RESIDENT: "⧖",
+                  WAITING_ON_HOA: "⟳",
+                  INTERNAL_FYI: "◌",
+                  CLOSED: "✓",
+                }[CANONICAL_STATUS_MAP[thread.status]];
 
                 return (
                   <Link
@@ -255,55 +291,76 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                     href={`/app/hoa/${resolvedParams.hoaId}/inbox?thread=${thread.id}`}
                     scroll={false}
                     className={cn(
-                      "block w-full rounded-2xl border px-4 py-4 text-left text-sm transition",
+                      "group block w-full rounded-2xl border px-4 py-4 text-left transition",
                       isActive
                         ? "border-slate-800 bg-slate-900 text-white shadow-[0_18px_45px_rgba(15,23,42,0.25)]"
-                        : "border-slate-100 bg-white/80 text-slate-600 hover:border-blue-200 hover:bg-white",
+                        : isMarketing
+                          ? "border-slate-100 bg-slate-100/80 text-slate-500 hover:border-slate-200"
+                          : "border-slate-100 bg-white/80 text-slate-600 hover:border-blue-200 hover:bg-white",
+                      isMarketing ? "opacity-80" : "",
                     )}
                   >
-                    <p className={cn("text-base font-semibold", isActive ? "text-white" : "text-slate-900")}>
-                      {thread.subject}
-                    </p>
-                    {lastMessage ? (
-                      <p className={isActive ? "text-xs text-white/70" : "text-xs text-slate-400"}>
-                        {lastMessage.direction === MessageDirection.INCOMING ? lastMessage.from : lastMessage.to}
-                      </p>
-                    ) : null}
-                    <p className={isActive ? "text-[11px] text-white/60" : "text-[11px] text-slate-400"}>
-                      {thread.messages.length} {thread.messages.length === 1 ? "message" : "messages"}
-                    </p>
-                    {badge ? (
-                      <span
-                        className={cn(
-                          "mt-3 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em]",
-                          lastMessage?.aiReply?.error
-                            ? "bg-red-600 text-white"
-                            : isActive
-                              ? "bg-white/20 text-white"
-                              : "bg-slate-900 text-white",
-                        )}
-                      >
-                        {badge}
-                      </span>
-                    ) : null}
-                    {thread.status ? (
-                      <span
-                        className={cn(
-                          "ml-2 mt-3 inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.3em]",
-                          threadStatusStyle(thread.status, Boolean(isActive)),
-                        )}
-                      >
-                        {formatStatus(thread.status)}
-                      </span>
-                    ) : null}
-                    {thread.assignedToUser ? (
-                      <span className="ml-2 mt-2 inline-flex items-center gap-2 rounded-full bg-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-800">
-                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-xs text-white">
-                          {userInitial(thread.assignedToUser)}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <p
+                          className={cn(
+                            "text-base",
+                            isActive ? "font-semibold text-white" : needsAttention ? "font-semibold text-slate-900" : "font-medium text-slate-700",
+                            isMarketing ? "line-through decoration-slate-300" : "",
+                          )}
+                        >
+                          {clamp(thread.subject, 140)}
+                        </p>
+                        {lastMessage ? (
+                          <p className={cn("truncate text-xs", isActive ? "text-white/70" : "text-slate-500")}> 
+                            {lastMessage.direction === MessageDirection.INCOMING ? lastMessage.from : lastMessage.to}
+                          </p>
+                        ) : null}
+                        <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-600">
+                            <span>{statusIcon}</span>
+                            {formatStatus(thread.status)}
+                          </span>
+                          {thread.unreadCount ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                              {thread.unreadCount} new
+                            </span>
+                          ) : null}
+                          {badge ? (
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                                lastMessage?.aiReply?.error
+                                  ? "bg-red-100 text-red-800"
+                                  : isActive
+                                    ? "bg-white/20 text-white"
+                                    : "bg-slate-200 text-slate-700",
+                              )}
+                            >
+                              {badge}
+                            </span>
+                          ) : null}
+                          {isMarketing ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-900/80 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-white">
+                              Marketing / System
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 text-right">
+                        <span className={cn("text-[11px] font-semibold", isActive ? "text-white/70" : "text-slate-400")}> 
+                          {new Date(thread.updatedAt).toLocaleString()}
                         </span>
-                        Assigned: {displayUser(thread.assignedToUser, session.user?.email ?? session.user?.id)}
-                      </span>
-                    ) : null}
+                        {thread.assignedToUser ? (
+                          <span className="inline-flex items-center gap-2 rounded-full bg-slate-200 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-800">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-xs text-white">
+                              {userInitial(thread.assignedToUser)}
+                            </span>
+                            {displayUser(thread.assignedToUser, session.user?.email ?? session.user?.id)}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
                   </Link>
                 );
               })}
@@ -329,18 +386,67 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
               </div>
             ) : (
               <div className="space-y-6">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Subject</p>
-                  <h1 className="text-3xl font-semibold text-slate-900">{activeThread.subject}</h1>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-3 py-1 font-semibold uppercase tracking-[0.3em]",
-                        threadStatusStyle(activeThread.status ?? ThreadStatus.NEW, true),
-                      )}
-                    >
-                      {formatStatus(activeThread.status ?? ThreadStatus.NEW)}
-                    </span>
+                <div className="space-y-3">
+                  <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Thread</p>
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="space-y-2">
+                      <h1 className="text-3xl font-semibold text-slate-900">{activeThread.subject}</h1>
+                      <p className="text-sm text-slate-500">{hoa.name} • {hoa.gmailAccount?.email ?? "Address unavailable"}</p>
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-2 rounded-full px-3 py-1 font-semibold uppercase tracking-[0.3em]",
+                            threadStatusStyle(activeThread.status ?? ThreadStatus.NEW, true),
+                          )}
+                        >
+                          {formatStatus(activeThread.status ?? ThreadStatus.NEW)}
+                        </span>
+                        {activeThread.unreadCount ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-3 py-1 font-semibold text-white">
+                            {activeThread.unreadCount} unread
+                          </span>
+                        ) : null}
+                        {activeThread.category ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
+                            {activeThread.category}
+                          </span>
+                        ) : null}
+                        {activeThread.priority ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
+                            Priority: {activeThread.priority}
+                          </span>
+                        ) : null}
+                        {(activeThread.category ?? "").toLowerCase().includes("marketing") ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-white">
+                            Marketing / System Email
+                          </span>
+                        ) : null}
+                        {activeThread.assignedToUser ? (
+                          <span className="inline-flex items-center gap-2 rounded-full bg-slate-200 px-3 py-1 font-semibold text-slate-800">
+                            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-xs uppercase text-white">
+                              {userInitial(activeThread.assignedToUser)}
+                            </span>
+                            Assigned: {displayUser(activeThread.assignedToUser, session.user?.email ?? session.user?.id)}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full border border-dashed border-slate-200 px-3 py-1 font-semibold text-slate-500">
+                            Unassigned
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-right text-xs text-slate-600">
+                      <p className="font-semibold text-slate-800">HOA Context</p>
+                      <p>{activeThread.messages[0]?.resident?.name ?? "Resident name unknown"}</p>
+                      <p className="text-[11px]">Unit: {activeThread.messages[0]?.resident?.email ?? "Not provided"}</p>
+                      <p className="text-[11px]">Violation: {activeThread.category ?? "Not detected"}</p>
+                      <a href="#similar-threads" className="mt-1 inline-flex text-[11px] font-semibold text-blue-700 underline">
+                        Similar past threads
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-100 bg-white/80 p-3 text-xs shadow-sm">
                     {activeThread.unreadCount ? (
                       <span className="inline-flex items-center rounded-full bg-amber-500 px-3 py-1 font-semibold text-white">
                         {activeThread.unreadCount} unread
@@ -381,11 +487,11 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           defaultValue={activeThread.status ?? ThreadStatus.NEW}
                           className="appearance-none rounded-lg border border-slate-200 bg-gradient-to-r from-white to-slate-50 px-3 py-2 pr-9 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-200 focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
                         >
-                          {THREAD_STATUS_OPTIONS.map((status) => (
-                            <option key={status} value={status}>
-                              {formatStatus(status)}
-                            </option>
-                          ))}
+                            {CANONICAL_STATUS_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
                         </select>
                         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">▾</span>
                       </div>
@@ -443,7 +549,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         type="submit"
                         className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-emerald-700 shadow-sm transition hover:-translate-y-[1px] hover:border-emerald-300 hover:bg-emerald-100"
                       >
-                        Mark resolved
+                        Close thread
                       </button>
                     </form>
                     <form action={`/api/threads/${activeThread.id}`} method="post">
@@ -452,18 +558,30 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         type="submit"
                         className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-amber-700 shadow-sm transition hover:-translate-y-[1px] hover:border-amber-300 hover:bg-amber-100"
                       >
-                        Awaiting resident
+                        Waiting on resident
                       </button>
                     </form>
                     <form action={`/api/threads/${activeThread.id}`} method="post">
                       <input type="hidden" name="status" value={ThreadStatus.FOLLOW_UP} />
                       <input type="hidden" name="assign" value="me" />
-                      <button
-                        type="submit"
-                        className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-700 shadow-sm transition hover:-translate-y-[1px] hover:border-violet-300 hover:bg-violet-100"
-                      >
-                        Follow up
-                      </button>
+                      {(activeThread.category ?? "").toLowerCase().includes("marketing") ? (
+                        <>
+                          <input type="hidden" name="clearUnread" value="true" />
+                          <button
+                            type="submit"
+                            className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-400 hover:bg-slate-100"
+                          >
+                            Archive / Ignore
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="submit"
+                          className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.25em] text-violet-700 shadow-sm transition hover:-translate-y-[1px] hover:border-violet-300 hover:bg-violet-100"
+                        >
+                          Wait on HOA
+                        </button>
+                      )}
                     </form>
                     <form action={`/api/threads/${activeThread.id}`} method="post">
                       <input type="hidden" name="clearUnread" value="true" />
@@ -623,11 +741,11 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
         </main>
       </div>
       {activeThread && latestAiReply?.aiReply ? (
-        <div className="fixed bottom-4 right-4 z-50 w-[clamp(360px,46vw,840px)] max-w-[90vw] rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.15)]">
+        <div className="fixed bottom-4 right-4 z-50 w-[clamp(420px,48vw,900px)] max-w-[92vw] rounded-2xl border border-slate-200 bg-white/98 p-4 shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
           <details open className="group">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-1 py-0.5 text-slate-800 transition hover:text-slate-900">
               <div className="min-w-0">
-                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">AI Reply</p>
+                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Decision panel</p>
                 <p className="truncate text-sm font-semibold text-slate-900" title={activeThread.subject}>
                   {activeThread.subject}
                 </p>
@@ -637,17 +755,68 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
               </span>
             </summary>
 
-            <div className="mt-3 space-y-3 rounded-xl bg-slate-50/80 p-3 shadow-inner">
+            <div className="mt-3 space-y-3 rounded-xl bg-slate-50/90 p-4 shadow-inner">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Summary</p>
+                  <p className="text-sm font-semibold text-slate-800 line-clamp-2">
+                    {clamp(latestAiReply.aiReply.replyText.split(". ")[0] ?? latestAiReply.aiReply.replyText, 160)}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Risk</p>
+                  <span className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold",
+                    /legal|attorney|sue|liability/i.test(latestAiReply.aiReply.replyText)
+                      ? "bg-red-100 text-red-800"
+                      : /escalat|complaint|angry/i.test(latestAiReply.aiReply.replyText)
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-emerald-100 text-emerald-800",
+                  )}>
+                    {/legal|attorney|sue|liability/i.test(latestAiReply.aiReply.replyText)
+                      ? "Legal"
+                      : /escalat|complaint|angry/i.test(latestAiReply.aiReply.replyText)
+                        ? "Medium"
+                        : "Low"}
+                  </span>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Actions</p>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    <form action={`/api/messages/${latestAiReply.id}/send`} method="post">
+                      <button
+                        type="submit"
+                        className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
+                      >
+                        Send
+                      </button>
+                    </form>
+                    <a
+                      href={`/app/hoa/${resolvedParams.hoaId}/inbox?thread=${activeThread.id}`}
+                      className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-300"
+                    >
+                      Edit
+                    </a>
+                    <a
+                      href={`#message-${latestAiReply.id}`}
+                      className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300"
+                    >
+                      Dismiss
+                    </a>
+                  </div>
+                </div>
+              </div>
+
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-                  <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-blue-800">Auto-draft</span>
-                  <span className="inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-slate-700">Fits text</span>
+                  <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-blue-800">Suggested reply</span>
+                  <span className="inline-flex rounded-full bg-slate-200 px-2 py-0.5 text-slate-700">Auto-draft</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <form action={`/api/messages/${latestAiReply.id}/retry-draft?variant=regenerate`} method="post">
                     <button
                       type="submit"
-                      className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:border-blue-300 hover:text-slate-900"
+                      className="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-300 hover:text-slate-900"
                     >
                       Regenerate
                     </button>
@@ -656,22 +825,24 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                     <form action={`/api/messages/${latestAiReply.id}/send`} method="post">
                       <button
                         type="submit"
-                        className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-500"
+                        className="inline-flex items-center gap-1 rounded-xl border border-blue-300 bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
                       >
                         Send
                       </button>
                     </form>
                   ) : null}
-                  <a
-                    href={`/app/hoa/${resolvedParams.hoaId}/inbox?thread=${activeThread.id}`}
-                    className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm transition hover:border-blue-300"
-                  >
-                    View thread
-                  </a>
+                  <form action={`/api/messages/${latestAiReply.id}/retry-draft?variant=regenerate`} method="post">
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-[1px] hover:border-slate-300"
+                    >
+                      Dismiss
+                    </button>
+                  </form>
                 </div>
               </div>
 
-              <div className="max-h-[60vh] min-h-[220px] overflow-auto rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm text-slate-800">
+              <div className="max-h-[60vh] min-h-[240px] overflow-auto rounded-lg border border-slate-100 bg-white px-3 py-2 text-sm text-slate-800">
                 <pre className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{latestAiReply.aiReply.replyText}</pre>
               </div>
             </div>

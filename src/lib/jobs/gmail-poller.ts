@@ -24,6 +24,14 @@ type PollJobResult = {
   reason?: string;
 };
 
+function isMarketingLike(subject: string, from: string, html: string | null | undefined, text: string | null | undefined) {
+  const haystack = `${subject} ${from} ${html ?? ""} ${text ?? ""}`.toLowerCase();
+  if (haystack.includes("list-unsubscribe") || haystack.includes("unsubscribe")) return true;
+  if (haystack.includes("newsletter") || haystack.includes("sale") || haystack.includes("promo")) return true;
+  if (haystack.includes("microsoft store") || haystack.includes("deal") || haystack.includes("pricing update")) return true;
+  return false;
+}
+
 export async function runGmailPollJob(): Promise<PollJobResult> {
   const lockAcquired = await acquireJobLock(POLL_JOB_ID, POLL_LOCK_WINDOW_MS);
   if (!lockAcquired) {
@@ -149,13 +157,21 @@ async function processAccount(accountId: string) {
         receivedAt: normalized.receivedAt,
       });
 
+      const marketing = isMarketingLike(
+        normalized.headers.subject ?? "",
+        normalized.headers.from ?? "",
+        normalized.html,
+        normalized.plainText,
+      );
+
       const thread = await prisma.emailThread.upsert({
         where: { gmailThreadId: message.threadId },
         update: {
           subject: normalized.headers.subject,
           updatedAt: new Date(),
           gmailAccountId: freshAccount.id,
-          status: ThreadStatus.NEW,
+          status: marketing ? ThreadStatus.FOLLOW_UP : ThreadStatus.NEW,
+          category: marketing ? "Marketing / System" : undefined,
           unreadCount: { increment: 1 },
         },
         create: {
@@ -163,7 +179,8 @@ async function processAccount(accountId: string) {
           subject: normalized.headers.subject,
           hoaId: account.hoaId,
           gmailAccountId: freshAccount.id,
-          status: ThreadStatus.NEW,
+          status: marketing ? ThreadStatus.FOLLOW_UP : ThreadStatus.NEW,
+          category: marketing ? "Marketing / System" : undefined,
           unreadCount: 1,
         },
       });
@@ -182,6 +199,7 @@ async function processAccount(accountId: string) {
             messageId: normalized.headers.messageId,
             references: normalized.headers.references,
             inReplyTo: normalized.headers.inReplyTo,
+            marketing,
           },
           residentId: resident?.id,
         },
