@@ -253,9 +253,9 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
   return (
     <div className="relative min-h-screen bg-slate-50">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.12),_transparent_55%)]" />
-      <div className="relative flex min-h-screen flex-col gap-6 px-4 pb-10 pt-8 lg:flex-row lg:items-start lg:px-6">
+      <div className="relative flex min-h-screen flex-col gap-6 px-3 pb-10 pt-6 sm:px-4 lg:flex-row lg:items-start lg:px-6 lg:pt-8">
         <aside className="w-full lg:w-96">
-          <GlassPanel className="h-full p-6">
+          <GlassPanel className="h-full p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Threads</p>
@@ -491,7 +491,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
           </GlassPanel>
         </aside>
         <main className="flex-1">
-          <GlassPanel className="h-full p-6">
+          <GlassPanel className="h-full p-4 sm:p-6">
             {success ? (
               <div className="mb-4 rounded-[20px] border border-emerald-200/60 bg-emerald-50/90 px-4 py-3 text-sm text-emerald-700">
                 Gmail connected successfully.
@@ -529,7 +529,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                   <div className="grid items-start gap-4 lg:grid-cols-[1fr_auto]">
                     <div className="min-w-0 space-y-2">
                       <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Thread</p>
-                      <h1 className="max-w-5xl text-3xl font-semibold leading-tight text-slate-900 text-balance">{activeThread.subject}</h1>
+                      <h1 className="max-w-5xl text-2xl font-semibold leading-tight text-slate-900 text-balance sm:text-3xl">{activeThread.subject}</h1>
                       <p className="text-sm text-slate-500">{hoa.name} | {hoa.gmailAccount?.email ?? "Address unavailable"}</p>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
                         <span
@@ -622,7 +622,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
 
                   {marketingActive ? (
                     <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-xs shadow-inner">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-col gap-3 sm:flex-wrap sm:flex-row sm:items-center sm:justify-between">
                         <div className="space-y-1">
                           <p className="text-sm font-semibold text-slate-900">Auto-ignored. No response drafted.</p>
                           <p className="text-[11px] text-slate-500">Status locked to Archived (Non-HOA). Override only if this is misclassified.</p>
@@ -640,14 +640,14 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                     </div>
                   ) : (
                     <div className="mt-4 space-y-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xs shadow-inner">
-                      <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                         {latestAiReply?.aiReply ? (
                           isSafeToSend ? (
                             <>
                               <form action={`/api/messages/${latestAiReply.id}/send`} method="post">
                                 <button
                                   type="submit"
-                                  className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-blue-700 bg-blue-700 px-7 py-3 text-[12px] font-semibold uppercase tracking-[0.25em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-600"
+                                  className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-700 bg-blue-700 px-7 py-3 text-[12px] font-semibold uppercase tracking-[0.25em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-600 sm:w-auto"
                                 >
                                   Send now
                                 </button>
@@ -662,7 +662,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           ) : (
                             <a
                               href="#ai-decision"
-                              className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-blue-600 bg-blue-600 px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.25em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500"
+                              className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-600 bg-blue-600 px-6 py-3 text-[12px] font-semibold uppercase tracking-[0.25em] text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-500 sm:w-auto"
                             >
                               Reply with AI draft
                             </a>
