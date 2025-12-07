@@ -16,7 +16,7 @@ export default function PrivacyPage() {
         Clear controls for managers and boards. Use the site header to navigate back to the app or homepage.
       </p>
       <p className="mt-4 text-sm text-slate-700">
-        HOA Reply AI ("we," "us," "our") provides an AI-powered email assistant for homeowner
+        HOA Reply AI (&quot;we,&quot; &quot;us,&quot; &quot;our&quot;) provides an AI-powered email assistant for homeowner
         association managers. This Privacy Policy explains what Google user data we access, why we
         access it, how we use it, where we store it, and how you can request deletion.
       </p>
@@ -77,7 +77,7 @@ export default function PrivacyPage() {
       <section className="mt-6">
         <h2 className="text-xl font-semibold">Limited Use and Google Data</h2>
         <p className="mt-3 text-sm text-slate-700">
-          We adhere to Google's Limited Use requirements. Google account and Gmail data accessed through
+          We adhere to Google&apos;s Limited Use requirements. Google account and Gmail data accessed through
           Google OAuth is used only to provide the features described above (classification, draft
           generation, and logging). If you revoke access from your Google account, we will no longer access
           that mailbox and can remove associated stored data on request.
