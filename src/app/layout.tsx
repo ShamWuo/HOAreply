@@ -21,6 +21,11 @@ export const metadata: Metadata = {
   ...baseMetadata,
   keywords: ["HOA", "HOA management", "Gmail", "AI", "email assistant", "community association"],
   authors: [{ name: "HOA Reply AI" }],
+  icons: {
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 export const viewport: Viewport = {
