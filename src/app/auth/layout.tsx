@@ -34,8 +34,8 @@ export default function AuthLayout({
                 },
                 {
                   label: "Workflow ready",
-                  stat: "n8n",
-                  subcopy: "Native webhook bridge",
+                  stat: "Built-in",
+                  subcopy: "Request intake + approvals",
                 },
                 {
                   label: "Security",
@@ -58,7 +58,7 @@ export default function AuthLayout({
             <div className="mb-8 space-y-2 text-center">
               <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">HOA Reply AI Connect</p>
               <h1 className="text-3xl font-semibold text-slate-900">Authenticate your workspace</h1>
-              <p className="text-sm text-slate-500">Secure Gmail and n8n automation bridge for HOA boards.</p>
+              <p className="text-sm text-slate-500">Secure Gmail + request workflow for HOA boards.</p>
             </div>
             {children}
           </section>

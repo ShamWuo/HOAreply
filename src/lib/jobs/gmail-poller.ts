@@ -1,11 +1,11 @@
 import { addBreadcrumb, captureException } from "@sentry/nextjs";
 import { MessageDirection, ThreadStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { ensureAccessToken, fetchNewInboxMessages, normalizeGmailMessage, sendGmailReply } from "@/lib/gmail";
-import { callN8nWebhook } from "@/lib/n8n";
+import { ensureAccessToken, fetchNewInboxMessages, normalizeGmailMessage } from "@/lib/gmail";
 import { logError, logInfo, logWarn } from "@/lib/logger";
 import { acquireJobLock, releaseJobLock } from "@/lib/job-lock";
 import { env } from "@/lib/env";
+import { handleInboundRequest } from "@/lib/workflows/request-pipeline";
 
 // Pull everything except promotions/updates, exclude mail sent by the HOA account, last 7d.
 const DEFAULT_QUERY = "in:anywhere newer_than:7d -category:promotions -category:updates -from:me";
@@ -338,73 +338,21 @@ async function processAccount(accountId: string) {
       try {
         const managerName = account.hoa?.user?.name ?? account.hoa?.user?.email ?? "Manager";
         const hoaName = account.hoa?.name ?? "HOA";
-        const webhookResponse = await callN8nWebhook({
+
+        await handleInboundRequest({
           hoaId: account.hoaId,
-          messageId: dbMessage.id,
-          threadId: thread.gmailThreadId,
-          gmailMessageId: message.id,
-          from: dbMessage.from,
-          to: dbMessage.to,
+          hoaName,
+          managerName,
+          threadId: thread.id,
+          residentId: resident?.id,
+          residentName: resident?.name ?? resident?.email ?? "Resident",
           subject: thread.subject,
           bodyText: dbMessage.bodyText,
-          bodyHtml: dbMessage.bodyHtml ?? undefined,
-          receivedAt: dbMessage.receivedAt.toISOString(),
-          managerName,
-          hoaName,
-          meta: {
-            gmailAccountEmail: freshAccount.email,
-          },
+          bodyHtml: dbMessage.bodyHtml,
         });
-
-        const aiReply = await prisma.aIReply.create({
-          data: {
-            messageId: dbMessage.id,
-            replyText: webhookResponse.replyText,
-            sent: false,
-          },
-        });
-
-        if (webhookResponse.classification || webhookResponse.priority) {
-          const category = webhookResponse.classification ?? null;
-          const priority = webhookResponse.priority ?? null;
-          await prisma.$transaction([
-            prisma.emailThread.update({
-              where: { id: thread.id },
-              data: { category, priority },
-            }),
-            prisma.threadClassificationHistory.create({
-              data: {
-                threadId: thread.id,
-                category,
-                priority,
-              },
-            }),
-          ]);
-        }
-
-        if (webhookResponse.send) {
-          await prisma.emailThread.update({
-            where: { id: thread.id },
-            data: { status: ThreadStatus.PENDING },
-          }).catch(() => {});
-          await sendGmailReply({
-            account: freshAccount,
-            thread,
-            originalMessage: dbMessage,
-            aiReply,
-          });
-        }
       } catch (error) {
-        const messageText = error instanceof Error ? error.message : "n8n error";
-        await prisma.aIReply.create({
-          data: {
-            messageId: dbMessage.id,
-            replyText: "",
-            sent: false,
-            error: messageText,
-          },
-        });
-        logError("n8n webhook failure", { accountId: account.id, threadId: thread.id, error: messageText });
+        const messageText = error instanceof Error ? error.message : "request pipeline error";
+        logError("request pipeline failure", { accountId: account.id, threadId: thread.id, error: messageText });
         captureException(error, { extra: { accountId: account.id, threadId: thread.id } });
       }
     }

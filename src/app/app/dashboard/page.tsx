@@ -198,7 +198,7 @@ export default async function DashboardPage() {
               <ul className="mt-3 space-y-2 text-sm">
                 <li>1. Name the HOA and invite operators.</li>
                 <li>2. Connect Gmail via OAuth.</li>
-                <li>3. Pipe threads into your n8n webhook.</li>
+                <li>3. Let the built-in request engine classify, route, and draft.</li>
               </ul>
             </div>
             <div className="rounded-2xl border border-slate-100 bg-white/90 p-5 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">

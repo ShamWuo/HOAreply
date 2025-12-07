@@ -18,6 +18,10 @@ model User {
   accounts        Account[]
   hoas            HOA[]
   assignedThreads EmailThread[] @relation("ThreadAssignedToUser")
+  assignedRequests Request[]    @relation("RequestAssignedToUser")
+  approvedDrafts   ReplyDraft[] @relation("ReplyDraftApprovedBy")
+  sentDrafts       ReplyDraft[] @relation("ReplyDraftSentBy")
+  auditLogs        AuditLog[]
   sessions        Session[]
 }
 
@@ -30,6 +34,9 @@ model HOA {
   gmailAccount GmailAccount?
   user         User          @relation(fields: [userId], references: [id])
   residents    Resident[]
+  requests     Request[]
+  policyTemplates PolicyTemplate[]
+  auditLogs    AuditLog[]
 }
 
 model GmailAccount {
@@ -66,6 +73,7 @@ model EmailThread {
   hoa            HOA            @relation(fields: [hoaId], references: [id], onDelete: Cascade)
   assignedToUser User?          @relation("ThreadAssignedToUser", fields: [assignedToUserId], references: [id])
   classifications ThreadClassificationHistory[]
+  request        Request?
 
   @@index([hoaId])
   @@index([status])
@@ -84,6 +92,7 @@ model EmailMessage {
   metaJson       Json?
   aiReply        AIReply?
   residentId     String?
+  replyDrafts    ReplyDraft[]
   thread         EmailThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
   resident       Resident?        @relation(fields: [residentId], references: [id])
 
@@ -103,6 +112,7 @@ model Resident {
   updatedAt      DateTime @default(now()) @updatedAt
   hoa            HOA      @relation(fields: [hoaId], references: [id], onDelete: Cascade)
   messages       EmailMessage[]
+  requests       Request[]
 
   @@unique([hoaId, email])
   @@index([hoaId])
@@ -128,6 +138,99 @@ model ThreadClassificationHistory {
   thread    EmailThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@index([threadId])
+}
+
+model Request {
+  id             String           @id @default(cuid())
+  hoaId          String
+  threadId       String           @unique
+  subject        String
+  residentId     String?
+  category       RequestCategory
+  priority       RequestPriority  @default(NORMAL)
+  status         RequestStatus    @default(NEW)
+  assigneeUserId String?
+  slaDueAt       DateTime?
+  lastActionAt   DateTime         @default(now())
+  classification Json?
+  missingInfo    String[]         @default([])
+  hasLegalRisk   Boolean          @default(false)
+  flags          Json?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  closedAt       DateTime?
+
+  thread         EmailThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  hoa            HOA              @relation(fields: [hoaId], references: [id], onDelete: Cascade)
+  resident       Resident?        @relation(fields: [residentId], references: [id])
+  assignee       User?            @relation("RequestAssignedToUser", fields: [assigneeUserId], references: [id])
+  drafts         ReplyDraft[]
+  auditLogs      AuditLog[]
+
+  @@index([hoaId])
+  @@index([status])
+  @@index([priority])
+  @@index([residentId])
+  @@index([hoaId, status, priority, slaDueAt])
+}
+
+model PolicyTemplate {
+  id               String            @id @default(cuid())
+  hoaId            String
+  category         RequestCategory
+  priority         RequestPriority?
+  title            String
+  bodyTemplate     String
+  isDefault        Boolean           @default(false)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  hoa              HOA               @relation(fields: [hoaId], references: [id], onDelete: Cascade)
+  drafts           ReplyDraft[]
+
+  @@index([hoaId, category])
+  @@index([hoaId, category, priority])
+}
+
+model ReplyDraft {
+  id               String         @id @default(cuid())
+  requestId        String
+  templateId       String?
+  messageId        String?
+  content          String
+  createdAt        DateTime       @default(now())
+  createdBy        DraftAuthor    @default(ai)
+  approvedAt       DateTime?
+  approvedByUserId String?
+  sentAt           DateTime?
+  sentByUserId     String?
+
+  request          Request        @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  template         PolicyTemplate? @relation(fields: [templateId], references: [id])
+  approvedBy       User?          @relation("ReplyDraftApprovedBy", fields: [approvedByUserId], references: [id])
+  sentBy           User?          @relation("ReplyDraftSentBy", fields: [sentByUserId], references: [id])
+  message          EmailMessage?  @relation(fields: [messageId], references: [id])
+
+  @@index([requestId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  hoaId     String
+  userId    String?
+  requestId String?
+  action    AuditAction
+  metadata  Json?
+  createdAt DateTime    @default(now())
+
+  hoa       HOA         @relation(fields: [hoaId], references: [id], onDelete: Cascade)
+  user      User?       @relation(fields: [userId], references: [id])
+  request   Request?    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([hoaId])
+  @@index([requestId])
+  @@index([action])
 }
 
 model PollRun {
@@ -197,4 +300,46 @@ enum ThreadStatus {
   FOLLOW_UP
   RESOLVED
   ERROR
+}
+
+enum RequestCategory {
+  MAINTENANCE
+  VIOLATION
+  BILLING
+  GENERAL
+  BOARD
+  LEGAL
+  SPAM
+}
+
+enum RequestPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum RequestStatus {
+  NEW
+  NEEDS_INFO
+  IN_PROGRESS
+  AWAITING_REPLY
+  RESOLVED
+  CLOSED
+}
+
+enum AuditAction {
+  EMAIL_RECEIVED
+  REQUEST_CREATED
+  CLASSIFIED
+  DRAFT_GENERATED
+  DRAFT_REGENERATED
+  STATUS_CHANGED
+  APPROVED
+  SENT
+}
+
+enum DraftAuthor {
+  ai
+  user
 }

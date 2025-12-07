@@ -1,6 +1,6 @@
 # HOA Reply AI Connect
 
-HOA Reply AI Connect is a production-ready SaaS starter that lets HOA managers connect their Gmail inboxes, normalize messages, send them to an existing n8n flow, and reply directly from a unified dashboard.
+HOA Reply AI Connect is a production-ready SaaS starter that lets HOA managers connect their Gmail inboxes, normalize messages, run an internal request pipeline, and reply directly from a unified dashboard.
 
 ## Stack
 
@@ -9,7 +9,7 @@ HOA Reply AI Connect is a production-ready SaaS starter that lets HOA managers c
 - NextAuth Credentials provider + Prisma Adapter
 - PostgreSQL + Prisma ORM
 - Google OAuth & Gmail REST APIs
-- n8n webhook integration for AI replies
+- Internal request pipeline with AI draft generation
 
 ## Getting Started
 
@@ -21,7 +21,7 @@ npm install
 
 2. **Set up environment variables**
 
-Copy `.env.example` to `.env.local` (or `.env`) and fill in values from Google Cloud, n8n, and your database.
+Copy `.env.example` to `.env.local` (or `.env`) and fill in values from Google Cloud and your database.
 
 ```bash
 cp .env.example .env.local
@@ -35,11 +35,11 @@ The example file now ships with sensible localhost defaults. Update the URLs/IDs
 | `NEXTAUTH_SECRET` | Use `npx auth secret` or `openssl rand -base64 32` |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | From Google Cloud OAuth credentials (web type) |
 | `GOOGLE_OAUTH_REDIRECT_URI` | Should match `/api/auth/google/callback` |
-| `N8N_WEBHOOK_URL` | Existing workflow endpoint |
 | `GMAIL_POLL_INTERVAL_MINUTES` | Poll cadence suggestion (not used for scheduling yet) |
 | `APP_BASE_URL` | Used when building absolute URLs |
 | `CRON_SECRET` | Optional shared secret for `/api/jobs/poll-gmail` |
 | `SENTRY_DSN` / `SENTRY_TRACES_SAMPLE_RATE` | Optional Sentry monitoring + trace sampling |
+| `OPENAI_API_KEY` | Optional, used for AI-powered classification/drafts |
 
 3. **Prisma setup**
 
@@ -97,7 +97,7 @@ Example scheduled request (GitHub Actions):
 
 ## Project structure highlights
 
-- `src/lib/` – Prisma client, env loader, Google/Gmail helpers, webhook caller, jobs.
+- `src/lib/` – Prisma client, env loader, Google/Gmail helpers, request pipeline, jobs.
 - `src/components/` – UI primitives (auth forms, HOA forms, landing hero, etc.).
 - `src/app/` – App Router routes (marketing, auth, dashboard, HOA pages, APIs).
 - `prisma/schema.prisma` – Database schema + migrations.
@@ -118,7 +118,7 @@ Example scheduled request (GitHub Actions):
 No automated tests are included yet. Recommended next steps:
 
 1. Add integration tests for auth routes using Next.js `app-router` test utilities.
-2. Mock Gmail/n8n APIs when testing job logic.
+2. Mock Gmail/OpenAI APIs when testing job logic.
 3. Verify Google OAuth and webhook flows in a staging environment with HTTPS.
 
 Happy shipping!

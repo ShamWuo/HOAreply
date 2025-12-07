@@ -1,5 +1,5 @@
 import type { AIReply, EmailMessage, EmailThread, GmailAccount } from "@prisma/client";
-import type { HOAEmailInput } from "@/lib/n8n-draft-types";
+import type { HOAEmailInput } from "@/lib/email-types";
 import { MessageDirection } from "@prisma/client";
 import { refreshAccessToken, getGmailMessage, listGmailMessages, sendGmailMessage } from "@/lib/google-api";
 import { prisma } from "@/lib/prisma";
@@ -169,7 +169,7 @@ export async function fetchNewInboxMessages(account: DecryptedGmailAccount, quer
   return detailed;
 }
 
-function buildReplyMime(params: {
+export function buildReplyMime(params: {
   from: string;
   to: string;
   subject: string;
@@ -243,6 +243,33 @@ export async function sendGmailReply(params: {
       sentAt: new Date(),
       error: null,
     },
+  });
+}
+
+export async function sendRequestReply(params: {
+  account: GmailAccount;
+  thread: EmailThread;
+  to: string;
+  body: string;
+  inReplyTo?: string | null;
+  references?: string | null;
+}) {
+  const freshAccount = await ensureAccessToken(params.account);
+
+  const rawMime = buildReplyMime({
+    from: freshAccount.email,
+    to: params.to,
+    subject: params.thread.subject.startsWith("Re:") ? params.thread.subject : `Re: ${params.thread.subject}`,
+    body: params.body,
+    inReplyTo: params.inReplyTo,
+    references: params.references,
+  });
+
+  const encoded = Buffer.from(rawMime).toString("base64url");
+
+  return sendGmailMessage(freshAccount.accessToken, {
+    raw: encoded,
+    threadId: params.thread.gmailThreadId,
   });
 }
 

@@ -46,7 +46,7 @@ export function LandingHero() {
             {[
               { label: "Replies drafted", value: "87%", note: "Colorado pilot" },
               { label: "Inbox time saved", value: "42%", note: "Week 1, 143 emails" },
-              { label: "Setup time", value: "10 min", note: "Gmail + n8n" },
+              { label: "Setup time", value: "10 min", note: "Gmail + built-in workflow" },
             ].map((stat) => (
               <div
                 key={stat.label}
@@ -99,7 +99,7 @@ export function LandingHero() {
           </div>
           <div className="absolute -right-6 -top-6 hidden rounded-2xl border border-white/30 bg-white/90 px-4 py-3 text-sm text-slate-700 shadow-[0_25px_60px_rgba(15,23,42,0.18)] md:block animate-fade-in animate-delay-2">
             <p className="text-xs uppercase tracking-[0.4em] text-slate-400">Workflow</p>
-            <p className="mt-2 font-semibold text-slate-900">Gmail + n8n + AI reply</p>
+            <p className="mt-2 font-semibold text-slate-900">Gmail + Request Engine</p>
             <p className="text-xs text-slate-500">Under 90 seconds</p>
           </div>
         </div>

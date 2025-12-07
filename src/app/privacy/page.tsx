@@ -55,11 +55,11 @@ export default function PrivacyPage() {
       <section className="mt-6">
         <h2 className="text-xl font-semibold">Sharing and third parties</h2>
         <p className="mt-3 text-sm text-slate-700">
-          We may send normalized message data and reply drafts to configured automation endpoints (for
-          example your n8n webhook) to integrate with workflows. We do not sell Google user data. Any
-          third-party integrations you connect are governed by their own terms and privacy policies. Automation
-          endpoints process data solely on your behalf and under your configuration; they are not permitted to
-          retain or reuse Gmail data for their own purposes.
+          By default, all message normalization, classification, and drafting stay inside HOA Reply. If you
+          choose to forward data to an external automation endpoint, it will operate solely on your behalf and
+          under your configuration. We do not sell Google user data. Third-party integrations you connect are
+          governed by their own terms and privacy policies, and may not retain or reuse Gmail data for their own
+          purposes.
         </p>
       </section>
 

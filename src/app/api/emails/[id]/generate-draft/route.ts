@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getClassificationAndDraftFromN8n } from "@/lib/n8n";
 import { createGmailDraftForManager } from "@/lib/gmail";
-import type { HOAEmailInput, HOAManagerContext } from "@/lib/n8n-draft-types";
+import { handleInboundRequest } from "@/lib/workflows/request-pipeline";
+import type { HOAEmailInput, HOAManagerContext } from "@/lib/email-types";
 
 export async function POST(
   _req: NextRequest,
@@ -20,6 +20,7 @@ export async function POST(
     const email = await prisma.emailMessage.findUnique({
       where: { id },
       include: {
+        resident: true,
         thread: {
           include: {
             hoa: {
@@ -71,20 +72,26 @@ export async function POST(
       managerEmail: gmailAccount.email,
     };
 
-    const {
-      draftReply,
-      classification,
-      email: echoedEmail,
-    } = await getClassificationAndDraftFromN8n(emailInput, managerContext);
+    const result = await handleInboundRequest({
+      hoaId: hoa.id,
+      hoaName: hoa.name,
+      managerName: managerContext.managerName,
+      threadId: thread.id,
+      residentId: email.residentId,
+      residentName: email.resident?.name ?? email.resident?.email ?? "Resident",
+      subject: thread.subject,
+      bodyText: email.bodyText,
+      bodyHtml: email.bodyHtml,
+    });
 
     await createGmailDraftForManager({
       account: gmailAccount,
-      originalEmail: echoedEmail,
+      originalEmail: emailInput,
       managerEmail: managerContext.managerEmail,
-      draftBody: draftReply,
+      draftBody: result.draft.content,
     });
 
-    return NextResponse.json({ ok: true, classification });
+    return NextResponse.json({ ok: true, classification: result.classification });
   } catch (error) {
     console.error("generate-draft error", {
       error,

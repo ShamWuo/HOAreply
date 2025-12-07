@@ -5,11 +5,11 @@ import { GlassPanel } from "@/components/ui/glass-panel";
 import { pillButtonClasses } from "@/components/ui/pill-button";
 
 interface HoaDetailPageProps {
-  params: Promise<{ hoaId: string }>;
+  params?: Promise<{ hoaId: string }>;
 }
 
 export default async function HoaDetailPage({ params }: HoaDetailPageProps) {
-  const { hoaId } = await params;
+  const { hoaId } = params ? await params : { hoaId: "" };
   const session = await auth();
   if (!session?.user?.id) {
     return null;

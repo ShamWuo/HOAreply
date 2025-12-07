@@ -1,20 +1,24 @@
 import { NextResponse } from "next/server";
-import { MessageDirection, Prisma } from "@prisma/client";
+import { MessageDirection } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { callN8nWebhook } from "@/lib/n8n";
-import { sendGmailReply } from "@/lib/gmail";
 import { logError, logInfo } from "@/lib/logger";
+import { handleInboundRequest, runRequestPipeline } from "@/lib/workflows/request-pipeline";
 
 export async function POST(request: Request, { params }: { params: Promise<{ messageId: string }> }) {
   const { messageId } = await params;
   const url = new URL(request.url);
-  const variant = url.searchParams.get("variant") ?? undefined;
-  const tone = url.searchParams.get("tone") ?? undefined;
-  const length = url.searchParams.get("length") ?? undefined;
+  // legacy query params retained to avoid breaking links; unused in new pipeline
+  const _variant = url.searchParams.get("variant") ?? undefined;
+  const _tone = url.searchParams.get("tone") ?? undefined;
+  const _length = url.searchParams.get("length") ?? undefined;
+  void _variant;
+  void _tone;
+  void _length;
 
   const message = await prisma.emailMessage.findUnique({
     where: { id: messageId },
     include: {
+      resident: true,
       aiReply: true,
       thread: {
         include: {
@@ -35,72 +39,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ mes
     return NextResponse.json({ error: "Only incoming messages can be retried" }, { status: 400 });
   }
 
-  const account = message.thread.gmailAccount;
-
   try {
-    const webhookResponse = await callN8nWebhook({
-      hoaId: message.thread.hoaId,
-      messageId: message.id,
-      threadId: message.thread.gmailThreadId,
-      gmailMessageId: message.gmailMessageId ?? "",
-      from: message.from,
-      to: message.to,
-      subject: message.thread.subject,
-      bodyText: message.bodyText,
-      bodyHtml: message.bodyHtml ?? undefined,
-      receivedAt: message.receivedAt.toISOString(),
-      managerName: message.thread.hoa.user?.name ?? message.thread.hoa.user?.email ?? "Manager",
-      hoaName: message.thread.hoa.name,
-      variant,
-      tone,
-      length,
-      meta: {
-        gmailAccountEmail: account.email,
-      },
-    });
+    const existingRequest = await prisma.request.findUnique({ where: { threadId: message.threadId } });
 
-    const aiReply = await prisma.aIReply.upsert({
-      where: { messageId: message.id },
-      update: {
-        replyText: webhookResponse.replyText,
-        sent: false,
-        error: null,
-      },
-      create: {
-        messageId: message.id,
-        replyText: webhookResponse.replyText,
-        sent: false,
-      },
-    });
+    const result = existingRequest
+      ? await runRequestPipeline(existingRequest.id)
+      : await handleInboundRequest({
+          hoaId: message.thread.hoaId,
+          hoaName: message.thread.hoa.name,
+          managerName: message.thread.hoa.user?.name ?? message.thread.hoa.user?.email ?? "Manager",
+          threadId: message.thread.id,
+          residentId: message.residentId,
+          residentName: message.resident?.name ?? message.resident?.email ?? "Resident",
+          subject: message.thread.subject,
+          bodyText: message.bodyText,
+          bodyHtml: message.bodyHtml,
+        });
 
-    if (webhookResponse.classification || webhookResponse.priority) {
-      const category = webhookResponse.classification ?? null;
-      const priority = webhookResponse.priority ?? null;
-      await prisma.$transaction([
-        prisma.emailThread.update({
-          where: { id: message.threadId },
-          data: { category, priority } as Prisma.EmailThreadUpdateInput,
-        }),
-        prisma.threadClassificationHistory.create({
-          data: {
-            threadId: message.threadId,
-            category,
-            priority,
-          },
-        }),
-      ]);
-    }
-
-    if (webhookResponse.send) {
-      await sendGmailReply({
-        account,
-        thread: message.thread,
-        originalMessage: message,
-        aiReply,
-      });
-    }
-
-    logInfo("retry-draft success", { messageId: message.id, threadId: message.threadId, sent: webhookResponse.send });
+    logInfo("retry-draft success", { messageId: message.id, threadId: message.threadId, status: result.routing.status });
     const successUrl = new URL(
       `/app/hoa/${message.thread.hoaId}/inbox?thread=${message.threadId}`,
       process.env.APP_BASE_URL ?? "http://localhost:3000",

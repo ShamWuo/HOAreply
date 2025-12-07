@@ -11,9 +11,9 @@ Create a `.env` (or set envs in your host) with these variables. Do NOT commit r
 - `APP_BASE_URL` — same as `NEXTAUTH_URL` (used to build absolute links).
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — Google OAuth credentials.
 - `GOOGLE_OAUTH_REDIRECT_URI` — `https://<your-domain>/api/auth/google/callback`.
-- `N8N_WEBHOOK_URL` — your n8n workflow endpoint.
 - `GMAIL_POLL_INTERVAL_MINUTES` — integer, suggested `2` (used by job logic).
 - `CRON_SECRET` — optional shared secret for `/api/jobs/poll-gmail`.
+- `OPENAI_API_KEY` — optional, used for AI classification/drafts.
 
 ## Quick Production Steps
 

@@ -164,12 +164,6 @@ function matchesCategoryFilter(thread: { category: string | null; classification
   return resolveThreadCategory(thread).filterKey === filter;
 }
 
-function priorityWeight(priority: Priority) {
-  if (priority === "high") return 0;
-  if (priority === "needs-review") return 1;
-  return 2;
-}
-
 function getThreadTimestamp(thread: { updatedAt: Date; messages: { receivedAt: Date }[] }) {
   const lastMessage = thread.messages.at(-1);
   return lastMessage?.receivedAt ?? thread.updatedAt;
@@ -569,28 +563,41 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
                         <span
                           className={cn(
-                            "inline-flex items-center gap-2 rounded-full px-3 py-1 font-semibold uppercase tracking-[0.3em]",
+                            "inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 py-1 font-semibold uppercase tracking-[0.25em] text-white",
                             threadStatusStyle(activeThread.status ?? ThreadStatus.NEW, true),
                           )}
                         >
                           {formatStatus(activeThread.status ?? ThreadStatus.NEW)}
                         </span>
-                        {/* Unread chip removed; status handles attention */}
                         {effectiveCategory ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-semibold uppercase tracking-[0.2em] text-slate-700">
                             {effectiveCategory}
                           </span>
                         ) : null}
+                        {effectivePriority ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-semibold uppercase tracking-[0.2em] text-slate-700">
+                            Priority: {effectivePriority}
+                          </span>
+                        ) : null}
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 font-semibold uppercase tracking-[0.2em] text-slate-700">
+                          Sending as {session.user?.name ?? "Board manager"} | {hoa.name}
+                        </span>
                         {(activeThread.category ?? "").toLowerCase().includes("marketing") ? (
                           <>
                             <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-white">
                               Non-HOA detected
                             </span>
-                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-800">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-800">
                               Auto-archived
                             </span>
                           </>
                         ) : null}
+                        <a
+                          href="#ai-decision"
+                          className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-700"
+                        >
+                          Why this is safe
+                        </a>
                       </div>
                     </div>
                     <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 text-right text-xs text-slate-600 lg:justify-self-end">

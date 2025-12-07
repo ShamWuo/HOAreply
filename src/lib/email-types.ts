@@ -13,11 +13,3 @@ export type HOAManagerContext = {
   managerName: string;
   managerEmail: string;
 };
-
-export type N8nClassifyDraftResponse = {
-  // classification shape is defined in n8n; left loose intentionally
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  classification: any;
-  draftReply: string;
-  email: HOAEmailInput;
-};
