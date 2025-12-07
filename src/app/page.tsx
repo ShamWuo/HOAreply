@@ -320,8 +320,8 @@ export default function Home() {
               <Link href="/auth/signup" className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-slate-900">
                 Start free trial
               </Link>
-              <Link href="mailto:hello@hoareply.ai" className="inline-flex items-center justify-center rounded-full border border-white/50 px-6 py-3 text-sm font-semibold">
-                Contact sales
+              <Link href="/auth/signup" className="inline-flex items-center justify-center rounded-full border border-white/50 px-6 py-3 text-sm font-semibold">
+                Talk to sales
               </Link>
             </div>
           </div>

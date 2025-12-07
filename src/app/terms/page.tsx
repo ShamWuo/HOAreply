@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { buildMetadata } from "@/lib/seo";
 
-const contactEmail = "privacy@hoareply.ai";
 const privacyUrl = "https://hoareply.com/privacy";
 
 export const generateMetadata = () =>
@@ -23,8 +22,9 @@ export default function TermsPage() {
       <section className="mt-8 space-y-3 text-sm text-slate-700">
         <h2 className="text-xl font-semibold">1. Eligibility & acceptable use</h2>
         <p>
-          You must be at least 18 and authorized by the HOA or management company you represent. You agree
-          not to misuse the service (including spamming residents, reverse engineering, or attempting to
+          You must be at least 18 and authorized by the HOA or management company you represent. If you are
+          under 18, you must use the service only through an organization-owned account with adult authorization.
+          You agree not to misuse the service (including spamming residents, reverse engineering, or attempting to
           access other users&apos; data).
         </p>
       </section>
@@ -53,7 +53,7 @@ export default function TermsPage() {
         <p>
           We store the minimum information required to operate: mailbox identifiers, classifications,
           drafts, and audit logs. Data is encrypted in transit and at rest. You can request deletion at any
-          time by emailing {contactEmail}; we delete production data within 30 days unless retention is
+          time from the in-app data request option; we delete production data within 30 days unless retention is
           legally required.
         </p>
       </section>
@@ -61,9 +61,9 @@ export default function TermsPage() {
       <section className="mt-8 space-y-3 text-sm text-slate-700">
         <h2 className="text-xl font-semibold">5. Payments and refunds</h2>
         <p>
-          Paid plans renew monthly unless cancelled. Fees are non-refundable except where required by law.
-          You may cancel future billing at any time inside the app or by contacting support. Any usage-based
-          fees (e.g., add-on integrations) are invoiced according to your plan.
+          Paid plans renew monthly unless cancelled. Fees are non-refundable except where required by law or
+          explicitly stated in writing. You may cancel future billing at any time inside the app or by contacting
+          support. Any usage-based fees (e.g., add-on integrations) are invoiced according to your plan.
         </p>
       </section>
 
@@ -82,12 +82,20 @@ export default function TermsPage() {
           HOA Reply AI is provided &quot;as is&quot; without warranties of any kind. To the fullest extent
           permitted by law we are not liable for indirect, incidental, consequential, or punitive damages,
           nor for errors or omissions in AI-generated output. Total liability for any claim is limited to
-          fees paid to us in the 12 months preceding the event.
+          USD $500 or the fees paid to us in the 12 months preceding the event, whichever is greater.
         </p>
       </section>
 
       <section className="mt-8 space-y-3 text-sm text-slate-700">
-        <h2 className="text-xl font-semibold">8. Governing law & disputes</h2>
+        <h2 className="text-xl font-semibold">8. Force majeure</h2>
+        <p>
+          We are not liable for delays or failures caused by events beyond reasonable control, including
+          natural disasters, internet or carrier outages, acts of government, or other force majeure events.
+        </p>
+      </section>
+
+      <section className="mt-8 space-y-3 text-sm text-slate-700">
+        <h2 className="text-xl font-semibold">9. Governing law & disputes</h2>
         <p>
           These Terms are governed by the laws of the State of Colorado, excluding conflict-of-laws
           principles. Disputes will be handled in state or federal courts located in Denver County, Colorado.
@@ -95,10 +103,10 @@ export default function TermsPage() {
       </section>
 
       <section className="mt-8 space-y-3 text-sm text-slate-700">
-        <h2 className="text-xl font-semibold">9. Updates & contact</h2>
+        <h2 className="text-xl font-semibold">10. Updates & contact</h2>
         <p>
           We may update these Terms occasionally; we will post the effective date and notify administrators
-          via email or in-app notices when changes are material. Questions? Email {contactEmail}.
+          via email or in-app notices when changes are material. Questions? Use the in-app support channel in your account settings.
         </p>
       </section>
     </div>

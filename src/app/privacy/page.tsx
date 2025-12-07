@@ -16,7 +16,7 @@ export default function PrivacyPage() {
         Clear controls for managers and boards. Use the site header to navigate back to the app or homepage.
       </p>
       <p className="mt-4 text-sm text-slate-700">
-        HOA Reply AI (&quot;we,&quot; &quot;us,&quot; &quot;our&quot;) provides an AI-powered email assistant for homeowner
+        HOA Reply AI ("we," "us," "our") provides an AI-powered email assistant for homeowner
         association managers. This Privacy Policy explains what Google user data we access, why we
         access it, how we use it, where we store it, and how you can request deletion.
       </p>
@@ -26,9 +26,19 @@ export default function PrivacyPage() {
         <ul className="mt-3 list-disc pl-5 text-sm text-slate-700">
           <li>Basic profile information (name, email) from Google Sign-In.</li>
           <li>
-            Gmail messages for mailboxes you connect (subject, body, attachments metadata) — used only
+            Gmail messages for mailboxes you connect (subject, body, attachment filenames and MIME types only - not file contents) - used only
             to classify and generate reply drafts.
           </li>
+        </ul>
+      </section>
+
+      <section className="mt-6">
+        <h2 className="text-xl font-semibold">What we do NOT do with Gmail data</h2>
+        <ul className="mt-3 list-disc pl-5 text-sm text-slate-700">
+          <li>We do not use Gmail data to train machine learning models outside your workflows.</li>
+          <li>We do not use Gmail data for advertising or marketing.</li>
+          <li>We do not access messages outside the inboxes you explicitly connect.</li>
+          <li>We do not share Gmail data with third parties unrelated to providing the service.</li>
         </ul>
       </section>
 
@@ -47,7 +57,9 @@ export default function PrivacyPage() {
         <p className="mt-3 text-sm text-slate-700">
           We may send normalized message data and reply drafts to configured automation endpoints (for
           example your n8n webhook) to integrate with workflows. We do not sell Google user data. Any
-          third-party integrations you connect are governed by their own terms and privacy policies.
+          third-party integrations you connect are governed by their own terms and privacy policies. Automation
+          endpoints process data solely on your behalf and under your configuration; they are not permitted to
+          retain or reuse Gmail data for their own purposes.
         </p>
       </section>
 
@@ -55,8 +67,9 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-semibold">Storage, retention, and security</h2>
         <p className="mt-3 text-sm text-slate-700">
           We store only the data necessary to provide the service (mailbox identifiers, message metadata,
-          classifications, and drafts). You can configure data retention in your account settings or
-          request deletion by contacting us. Data is encrypted in transit and at rest; access is limited to
+          classifications, and drafts). By default, message metadata and drafts are retained for 90 days unless
+          you configure a different retention period. You can configure data retention in your account settings
+          or request deletion by contacting us. Data is encrypted in transit and at rest; access is limited to
           authorized systems and personnel.
         </p>
       </section>
@@ -64,7 +77,7 @@ export default function PrivacyPage() {
       <section className="mt-6">
         <h2 className="text-xl font-semibold">Limited Use and Google Data</h2>
         <p className="mt-3 text-sm text-slate-700">
-          We adhere to Google&apos;s Limited Use requirements. Google account and Gmail data accessed through
+          We adhere to Google's Limited Use requirements. Google account and Gmail data accessed through
           Google OAuth is used only to provide the features described above (classification, draft
           generation, and logging). If you revoke access from your Google account, we will no longer access
           that mailbox and can remove associated stored data on request.
@@ -84,8 +97,7 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-semibold">Your choices, deletion, and contact</h2>
         <p className="mt-3 text-sm text-slate-700">
           You can disconnect Gmail accounts at any time from the app settings. To request data deletion,
-          corrections, or export of your data, contact us at{" "}
-          <Link href="mailto:privacy@hoareply.ai">privacy@hoareply.ai</Link>. We respond to verified
+          corrections, or export of your data, use the data request option in your account settings. We respond to verified
           requests within 5 business days and delete data within 30 days unless legal obligations
           require retention.
         </p>

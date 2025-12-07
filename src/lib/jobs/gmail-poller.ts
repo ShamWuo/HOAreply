@@ -7,7 +7,8 @@ import { logError, logInfo, logWarn } from "@/lib/logger";
 import { acquireJobLock, releaseJobLock } from "@/lib/job-lock";
 import { env } from "@/lib/env";
 
-const DEFAULT_QUERY = "label:INBOX newer_than:7d";
+// Pull from primary category across all mailboxes (including auto-archived), exclude mail sent by the HOA account, last 7d.
+const DEFAULT_QUERY = "in:anywhere category:primary newer_than:7d -from:me";
 const POLL_JOB_ID = "poll-gmail";
 const POLL_INTERVAL_MINUTES = Math.max(env.GMAIL_POLL_INTERVAL_MINUTES, 5);
 const POLL_LOCK_WINDOW_MS = POLL_INTERVAL_MINUTES * 60 * 1000;
@@ -148,6 +149,23 @@ async function processAccount(accountId: string) {
 
     for (const message of messages) {
       const normalized = normalizeGmailMessage(message);
+      const marketing = isMarketingLike(
+        normalized.headers.subject ?? "",
+        normalized.headers.from ?? "",
+        normalized.html,
+        normalized.plainText,
+      );
+
+      if (marketing) {
+        logInfo("poll-gmail skip marketing", {
+          accountId: account.id,
+          email: freshAccount.email,
+          threadId: message.threadId,
+          subject: normalized.headers.subject,
+        });
+        continue;
+      }
+
       const senderEmail = extractEmail(normalized.headers.from) ?? normalized.headers.from ?? "";
 
       const resident = await upsertResident({
@@ -157,31 +175,24 @@ async function processAccount(accountId: string) {
         receivedAt: normalized.receivedAt,
       });
 
-      const marketing = isMarketingLike(
-        normalized.headers.subject ?? "",
-        normalized.headers.from ?? "",
-        normalized.html,
-        normalized.plainText,
-      );
-
       const thread = await prisma.emailThread.upsert({
         where: { gmailThreadId: message.threadId },
         update: {
           subject: normalized.headers.subject,
           updatedAt: new Date(),
           gmailAccountId: freshAccount.id,
-          status: marketing ? ThreadStatus.RESOLVED : ThreadStatus.NEW,
-          category: marketing ? "Marketing / System" : undefined,
-          unreadCount: marketing ? { set: 0 } : { increment: 1 },
+          status: ThreadStatus.NEW,
+          category: undefined,
+          unreadCount: { increment: 1 },
         },
         create: {
           gmailThreadId: message.threadId,
           subject: normalized.headers.subject,
           hoaId: account.hoaId,
           gmailAccountId: freshAccount.id,
-          status: marketing ? ThreadStatus.RESOLVED : ThreadStatus.NEW,
-          category: marketing ? "Marketing / System" : undefined,
-          unreadCount: marketing ? 0 : 1,
+          status: ThreadStatus.NEW,
+          category: undefined,
+          unreadCount: 1,
         },
       });
 

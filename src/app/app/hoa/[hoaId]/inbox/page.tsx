@@ -137,6 +137,8 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
   const firstIncomingMessage = activeThread?.messages.find((m) => m.direction === MessageDirection.INCOMING) ?? activeThread?.messages[0];
   const residentContext = firstIncomingMessage?.resident;
   const similarCaseCount = activeThread?.classifications?.length ?? 0;
+  const effectiveCategory = activeThread?.category ?? activeThread?.classifications?.[0]?.category ?? null;
+  const effectivePriority = activeThread?.priority ?? activeThread?.classifications?.[0]?.priority ?? null;
   const minutesSaved = Math.min(24, Math.max(8, Math.round(((latestAiReply?.aiReply?.replyText?.length ?? 200) / 120) + 7)));
   const canonicalStatus = activeThread ? CANONICAL_STATUS_MAP[activeThread.status ?? ThreadStatus.NEW] : "OPEN";
   const isWaiting = canonicalStatus === "WAITING";
@@ -381,14 +383,14 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           {formatStatus(activeThread.status ?? ThreadStatus.NEW)}
                         </span>
                         {/* Unread chip removed; status handles attention */}
-                        {activeThread.priority ? (
+                        {effectivePriority ? (
                           <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
-                            Priority: {activeThread.priority}
+                            Priority: {effectivePriority}
                           </span>
                         ) : null}
-                        {activeThread.category ? (
+                        {effectiveCategory ? (
                           <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
-                            {activeThread.category}
+                            {effectiveCategory}
                           </span>
                         ) : null}
                         {(activeThread.category ?? "").toLowerCase().includes("marketing") ? (
@@ -418,7 +420,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                             <p className="text-[11px] text-slate-500">Sender: {firstIncomingMessage?.from ?? "Unknown"}</p>
                           </div>
                         )}
-                      <p className="mt-2 text-[11px]">Category: {activeThread.category ?? "Not detected"}</p>
+                      <p className="mt-2 text-[11px]">Category: {effectiveCategory ?? "Not detected"}</p>
                       <a href="#similar-threads" className="mt-1 inline-flex text-[11px] font-semibold text-blue-700 underline">
                         Similar past threads
                       </a>
@@ -669,10 +671,10 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                               <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Classification</p>
                               <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-slate-700">
                                 <span className="inline-flex items-center rounded-full bg-slate-900 px-3 py-1 text-white">
-                                  {activeThread.category ?? "Uncategorized"}
+                                  {effectiveCategory ?? "Uncategorized"}
                                 </span>
                                 <span className="inline-flex items-center rounded-full border border-slate-300 px-3 py-1">
-                                  Priority: {activeThread.priority ?? "Unset"}
+                                  Priority: {effectivePriority ?? "Unset"}
                                 </span>
                               </div>
                               <p className="mt-2 text-[11px] text-slate-500">Set automatically by the AI classifier.</p>

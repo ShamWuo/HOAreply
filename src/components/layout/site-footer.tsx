@@ -13,7 +13,7 @@ const footerLinks = [
   {
     title: "Company",
     links: [
-      { label: "Contact", href: "mailto:hello@hoareply.ai" },
+      { label: "Get started", href: "/auth/signup" },
       { label: "Support", href: "/auth/login" },
       { label: "Status", href: "#" },
     ],
