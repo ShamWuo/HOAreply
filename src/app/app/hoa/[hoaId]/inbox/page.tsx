@@ -427,7 +427,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       return (
                         <Link
                           key={thread.id}
-                          href={/app/hoa//inbox?thread=}
+                          href={`/app/hoa/${resolvedParams.hoaId}/inbox?thread=${thread.id}`}
                           scroll={false}
                           className={cn(
                             "group block w-full rounded-2xl border px-4 py-4 text-left transition",
