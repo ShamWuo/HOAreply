@@ -1,11 +1,13 @@
 ﻿import Link from "next/link";
 import { notFound } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertHoaOwnership } from "@/lib/hoa";
 import { MessageDirection, ThreadStatus } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { cn } from "@/lib/utils";
+import { runGmailPollJob } from "@/lib/jobs/gmail-poller";
 
 function isMarketingThread(thread: { category: string | null }) {
   const category = (thread.category ?? "").toLowerCase();
@@ -228,6 +230,19 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
   const success = Boolean(resolvedSearchParams?.success);
   const errorMsg = resolvedSearchParams?.message;
   const baseInboxPath = `/app/hoa/${resolvedParams.hoaId}/inbox`;
+  const currentHref = (() => {
+    const params = new URLSearchParams();
+    Object.entries(resolvedSearchParams ?? {}).forEach(([key, value]) => {
+      if (typeof value === "string") params.set(key, value);
+    });
+    const query = params.toString();
+    return query ? `${baseInboxPath}?${query}` : baseInboxPath;
+  })();
+  const refreshInbox = async () => {
+    "use server";
+    await runGmailPollJob();
+    revalidatePath(baseInboxPath);
+  };
   const buildFilterHref = (nextPriority: PriorityFilter, nextCategory: CategoryFilter) => {
     const params = new URLSearchParams();
     Object.entries(resolvedSearchParams ?? {}).forEach(([key, value]) => {
@@ -579,7 +594,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       </a>
                     </div>
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700">
+                  <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700">
                     <span
                       className={cn(
                         "inline-flex items-center gap-2 rounded-full px-3 py-1",
@@ -618,6 +633,14 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         <p>Auto-draft confidence shown above; sending as {session.user?.name ?? "Board manager"}.</p>
                       </div>
                     </details>
+                    <form action={refreshInbox} className="inline-flex">
+                      <button
+                        type="submit"
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:-translate-y-[1px] hover:border-blue-200 hover:text-slate-900"
+                      >
+                        Refresh inbox
+                      </button>
+                    </form>
                   </div>
 
                   {marketingActive ? (

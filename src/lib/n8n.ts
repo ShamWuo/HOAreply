@@ -82,10 +82,12 @@ export async function callN8nWebhook(payload: N8nWebhookPayload) {
     if (Array.isArray(parsed) && parsed.length > 0) {
       const first = parsed[0] as N8nLogItem;
       const replyText = first.logReplyDraft ?? first.output;
+      const classification = first.logCategory;
+      const priority = first.logPriority;
       if (!replyText || typeof replyText !== "string" || !replyText.trim()) {
-        return { replyText: FALLBACK_DRAFT, send: false };
+        return { replyText: FALLBACK_DRAFT, send: false, classification, priority };
       }
-      return { replyText, send: false };
+      return { replyText, send: false, classification, priority };
     }
 
     const data = parsed as N8nWebhookResponse | null;
