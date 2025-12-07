@@ -1,4 +1,4 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -14,7 +14,7 @@ function isMarketingThread(thread: { category: string | null }) {
 
 function clamp(text: string | null | undefined, max = 120) {
   if (!text) return "";
-  return text.length > max ? `${text.slice(0, max)}…` : text;
+  return text.length > max ? `${text.slice(0, max)}ΓÇª` : text;
 }
 
 interface InboxPageProps {
@@ -114,6 +114,61 @@ const CANONICAL_STATUS_LABEL: Record<CanonicalStatus, string> = {
   CLOSED: "Closed",
 };
 
+type PriorityFilter = "all" | "high" | "needs-review";
+type CategoryFilter = "all" | "maintenance" | "violations" | "billing" | "general";
+type Priority = "high" | "needs-review" | "normal";
+
+const ALLOWED_PRIORITY_FILTERS: PriorityFilter[] = ["all", "high", "needs-review"];
+const ALLOWED_CATEGORY_FILTERS: CategoryFilter[] = ["all", "maintenance", "violations", "billing", "general"];
+
+function normalizePriorityValue(value: string | null | undefined) {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+function getThreadPriority(thread: { priority: string | null; classifications?: { priority: string | null }[] }): Priority {
+  const primary = normalizePriorityValue(thread.priority);
+  const fromHistory = normalizePriorityValue(thread.classifications?.[0]?.priority);
+  const priority = primary || fromHistory;
+  if (priority.startsWith("high")) return "high";
+  if (priority.includes("review")) return "needs-review";
+  return "normal";
+}
+
+function getThreadCategory(thread: { category: string | null; classifications?: { category: string | null }[] }) {
+  const primary = thread.category?.trim().toLowerCase() ?? "";
+  const fromHistory = thread.classifications?.[0]?.category?.trim().toLowerCase() ?? "";
+  const category = primary || fromHistory;
+  return ALLOWED_CATEGORY_FILTERS.includes(category as CategoryFilter) && category !== "all"
+    ? (category as Exclude<CategoryFilter, "all">)
+    : "";
+}
+
+function matchesPriorityFilter(thread: { priority: string | null; classifications?: { priority: string | null }[] }, filter: PriorityFilter) {
+  if (filter === "all") return true;
+  return getThreadPriority(thread) === filter;
+}
+
+function matchesCategoryFilter(thread: { category: string | null; classifications?: { category: string | null }[] }, filter: CategoryFilter) {
+  if (filter === "all") return true;
+  return getThreadCategory(thread) === filter;
+}
+
+function priorityWeight(priority: Priority) {
+  if (priority === "high") return 0;
+  if (priority === "needs-review") return 1;
+  return 2;
+}
+
+function sortThreadsDefault<
+  T extends { updatedAt: Date; priority: string | null; classifications?: { priority: string | null }[] }
+>(threads: T[]) {
+  return [...threads].sort((a, b) => {
+    const weightDiff = priorityWeight(getThreadPriority(a)) - priorityWeight(getThreadPriority(b));
+    if (weightDiff !== 0) return weightDiff;
+    return b.updatedAt.getTime() - a.updatedAt.getTime();
+  });
+}
+
 export default async function InboxPage({ params, searchParams }: InboxPageProps) {
   const resolvedParams = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -122,14 +177,28 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
     notFound();
   }
 
+  const priorityParam = typeof resolvedSearchParams?.priority === "string" ? resolvedSearchParams.priority.toLowerCase() : "all";
+  const priorityFilter: PriorityFilter = ALLOWED_PRIORITY_FILTERS.includes(priorityParam as PriorityFilter)
+    ? (priorityParam as PriorityFilter)
+    : "all";
+  const categoryParam = typeof resolvedSearchParams?.category === "string" ? resolvedSearchParams.category.toLowerCase() : "all";
+  const categoryFilter: CategoryFilter = ALLOWED_CATEGORY_FILTERS.includes(categoryParam as CategoryFilter)
+    ? (categoryParam as CategoryFilter)
+    : "all";
+
   const hoa = await assertHoaOwnership(resolvedParams.hoaId, session.user.id);
   const threads = await fetchThreads(resolvedParams.hoaId);
   const primaryThreads = threads.filter((thread) => !isMarketingThread(thread));
-  const sidelinedThreads = threads.filter((thread) => isMarketingThread(thread));
+  const sidelinedThreads = sortThreadsDefault(threads.filter((thread) => isMarketingThread(thread)));
   const requestedThreadId =
     typeof resolvedSearchParams?.thread === "string" ? resolvedSearchParams.thread : undefined;
   const requestedThread = threads.find((thread) => thread.id === requestedThreadId);
-  const activeThread = requestedThread ?? primaryThreads[0] ?? threads[0];
+  const sortedPrimaryThreads = sortThreadsDefault(primaryThreads);
+  const filteredThreads = sortedPrimaryThreads.filter(
+    (thread) => matchesPriorityFilter(thread, priorityFilter) && matchesCategoryFilter(thread, categoryFilter),
+  );
+  const visibleThreads = filteredThreads.length ? filteredThreads : sortedPrimaryThreads;
+  const activeThread = requestedThread ?? visibleThreads[0] ?? sortedPrimaryThreads[0] ?? threads[0];
   const latestAiReply = activeThread?.messages
     .slice()
     .reverse()
@@ -137,8 +206,10 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
   const firstIncomingMessage = activeThread?.messages.find((m) => m.direction === MessageDirection.INCOMING) ?? activeThread?.messages[0];
   const residentContext = firstIncomingMessage?.resident;
   const similarCaseCount = activeThread?.classifications?.length ?? 0;
-  const effectiveCategory = activeThread?.category ?? activeThread?.classifications?.[0]?.category ?? null;
-  const effectivePriority = activeThread?.priority ?? activeThread?.classifications?.[0]?.priority ?? null;
+  const effectiveCategory = activeThread
+    ? getThreadCategory(activeThread) || activeThread.category || activeThread.classifications?.[0]?.category || null
+    : null;
+  const effectivePriority = activeThread ? getThreadPriority(activeThread) : null;
   const minutesSaved = Math.min(24, Math.max(8, Math.round(((latestAiReply?.aiReply?.replyText?.length ?? 200) / 120) + 7)));
   const canonicalStatus = activeThread ? CANONICAL_STATUS_MAP[activeThread.status ?? ThreadStatus.NEW] : "OPEN";
   const isWaiting = canonicalStatus === "WAITING";
@@ -156,6 +227,28 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
     !activeThread?.assignedToUserId && canonicalStatus === "OPEN" && (activeThread?.unreadCount ?? 0) > 0;
   const success = Boolean(resolvedSearchParams?.success);
   const errorMsg = resolvedSearchParams?.message;
+  const baseInboxPath = `/app/hoa/${resolvedParams.hoaId}/inbox`;
+  const buildFilterHref = (nextPriority: PriorityFilter, nextCategory: CategoryFilter) => {
+    const params = new URLSearchParams();
+    Object.entries(resolvedSearchParams ?? {}).forEach(([key, value]) => {
+      if (typeof value === "string") {
+        params.set(key, value);
+      }
+    });
+    params.delete("thread");
+    if (nextPriority === "all") {
+      params.delete("priority");
+    } else {
+      params.set("priority", nextPriority);
+    }
+    if (nextCategory === "all") {
+      params.delete("category");
+    } else {
+      params.set("category", nextCategory);
+    }
+    const query = params.toString();
+    return query ? `${baseInboxPath}?${query}` : baseInboxPath;
+  };
 
   return (
     <div className="relative min-h-screen bg-slate-50">
@@ -167,12 +260,66 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
               <div>
                 <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Threads</p>
                 <p className="text-xs text-slate-500">
-                  {primaryThreads.length} primary • {sidelinedThreads.length} auto-archived
+                  {visibleThreads.length} shown / {primaryThreads.length} primary / {sidelinedThreads.length} auto-archived
                 </p>
               </div>
             </div>
+            <div className="mt-4 space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">Priority</span>
+                {[
+                  { label: "All", value: "all" as PriorityFilter },
+                  { label: "High Priority", value: "high" as PriorityFilter },
+                  { label: "Needs Review", value: "needs-review" as PriorityFilter },
+                ].map((filter) => (
+                  <Link
+                    key={filter.value}
+                    href={buildFilterHref(filter.value, categoryFilter)}
+                    scroll={false}
+                    className={cn(
+                      "inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold transition",
+                      priorityFilter === filter.value
+                        ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-blue-200",
+                    )}
+                  >
+                    {filter.label}
+                  </Link>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-500">Category</span>
+                {[
+                  { label: "All", value: "all" as CategoryFilter },
+                  { label: "Maintenance", value: "maintenance" as CategoryFilter },
+                  { label: "Violations", value: "violations" as CategoryFilter },
+                  { label: "Billing", value: "billing" as CategoryFilter },
+                  { label: "General", value: "general" as CategoryFilter },
+                ].map((filter) => (
+                  <Link
+                    key={filter.value}
+                    href={buildFilterHref(priorityFilter, filter.value)}
+                    scroll={false}
+                    className={cn(
+                      "inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold transition",
+                      categoryFilter === filter.value
+                        ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-blue-200",
+                    )}
+                  >
+                    {filter.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
+
             <div className="mt-6 space-y-3">
-              {primaryThreads.map((thread) => {
+              {!visibleThreads.length ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-6 text-sm text-slate-600">
+                  No threads match these filters yet.
+                </div>
+              ) : null}
+              {visibleThreads.map((thread) => {
                 const lastMessage = thread.messages.at(-1);
                 const badge = (() => {
                   if (!lastMessage?.aiReply) return "";
@@ -183,15 +330,17 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                 const isActive = activeThread && thread.id === activeThread.id;
                 const needsAttention = thread.unreadCount > 0 || CANONICAL_STATUS_MAP[thread.status] !== "CLOSED";
                 const statusIcon = {
-                  OPEN: "●",
-                  WAITING: "⧖",
-                  CLOSED: "✓",
+                  OPEN: "?",
+                  WAITING: "?",
+                  CLOSED: "?",
                 }[CANONICAL_STATUS_MAP[thread.status]];
+                const priorityLabel = getThreadPriority(thread);
+                const categoryLabel = getThreadCategory(thread);
 
                 return (
                   <Link
                     key={thread.id}
-                    href={`/app/hoa/${resolvedParams.hoaId}/inbox?thread=${thread.id}`}
+                    href={/app/hoa//inbox?thread=}
                     scroll={false}
                     className={cn(
                       "group block w-full rounded-2xl border px-4 py-4 text-left transition",
@@ -220,6 +369,16 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                             <span>{statusIcon}</span>
                             {formatStatus(thread.status)}
                           </span>
+                          {priorityLabel && priorityLabel !== "normal" ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-700">
+                              {priorityLabel}
+                            </span>
+                          ) : null}
+                          {categoryLabel ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-700">
+                              {categoryLabel}
+                            </span>
+                          ) : null}
                           {badge ? (
                             <span
                               className={cn(
@@ -246,7 +405,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                 <details className="group rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-3">
                   <summary className="flex cursor-pointer items-center justify-between text-sm font-semibold text-slate-600">
                     <span>Auto-archived non-HOA ({sidelinedThreads.length})</span>
-                    <span className="text-xs text-slate-500">These won’t surface in primary</span>
+                    <span className="text-xs text-slate-500">These won?t surface in primary</span>
                   </summary>
                   <div className="mt-3 space-y-3">
                     {sidelinedThreads.map((thread) => {
@@ -260,15 +419,15 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       const isActive = activeThread && thread.id === activeThread.id;
                       const needsAttention = thread.unreadCount > 0 || CANONICAL_STATUS_MAP[thread.status] !== "CLOSED";
                       const statusIcon = {
-                        OPEN: "●",
-                        WAITING: "⧖",
-                        CLOSED: "✓",
+                        OPEN: "?",
+                        WAITING: "?",
+                        CLOSED: "?",
                       }[CANONICAL_STATUS_MAP[thread.status]];
 
                       return (
                         <Link
                           key={thread.id}
-                          href={`/app/hoa/${resolvedParams.hoaId}/inbox?thread=${thread.id}`}
+                          href={/app/hoa//inbox?thread=}
                           scroll={false}
                           className={cn(
                             "group block w-full rounded-2xl border px-4 py-4 text-left transition",
@@ -331,7 +490,6 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
             </div>
           </GlassPanel>
         </aside>
-
         <main className="flex-1">
           <GlassPanel className="h-full p-6">
             {success ? (
@@ -372,7 +530,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                     <div className="min-w-0 space-y-2">
                       <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Thread</p>
                       <h1 className="max-w-5xl text-3xl font-semibold leading-tight text-slate-900 text-balance">{activeThread.subject}</h1>
-                      <p className="text-sm text-slate-500">{hoa.name} • {hoa.gmailAccount?.email ?? "Address unavailable"}</p>
+                      <p className="text-sm text-slate-500">{hoa.name} ΓÇó {hoa.gmailAccount?.email ?? "Address unavailable"}</p>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
                         <span
                           className={cn(
@@ -415,7 +573,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           </div>
                         ) : (
                           <div className="space-y-1 text-right text-slate-600">
-                            <p className="text-sm font-semibold text-slate-900">External sender – not a resident</p>
+                            <p className="text-sm font-semibold text-slate-900">External sender ΓÇô not a resident</p>
                             <p className="text-[11px] text-slate-500">No unit match found in the resident directory.</p>
                             <p className="text-[11px] text-slate-500">Sender: {firstIncomingMessage?.from ?? "Unknown"}</p>
                           </div>
@@ -440,19 +598,19 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       )}
                     >
                       {confidenceLevel === "safe"
-                        ? "✅ Safe to send"
+                        ? "Γ£à Safe to send"
                         : confidenceLevel === "caution"
-                          ? "⚠ Needs skim"
+                          ? "ΓÜá Needs skim"
                           : confidenceLevel === "needs-review"
-                            ? "⚠ Needs review"
+                            ? "ΓÜá Needs review"
                             : "Confidence unknown"}
                     </span>
                     <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700">
-                      Sending as {session.user?.name ?? "Board manager"} • {hoa.name}
+                      Sending as {session.user?.name ?? "Board manager"} ΓÇó {hoa.name}
                     </span>
                     <details className="inline-block">
                       <summary className="flex cursor-pointer list-none items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:border-blue-200">
-                        ⓘ Why this is safe
+                        Γôÿ Why this is safe
                       </summary>
                       <div className="mt-2 w-72 space-y-2 rounded-lg border border-slate-200 bg-white p-3 text-[11px] text-slate-700 shadow-lg">
                         <p>AI matched past cases ({similarCaseCount}).</p>
@@ -517,7 +675,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
 
                         <details className="relative">
                           <summary className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-semibold text-slate-500 transition hover:-translate-y-[1px] hover:border-slate-300 hover:bg-slate-100">
-                            ⋮
+                            Γï«
                           </summary>
                           <div className="absolute left-0 z-10 mt-2 w-52 rounded-xl border border-slate-200 bg-white p-2 text-[11px] shadow-lg">
                             <form action={`/api/threads/${activeThread.id}`} method="post">
@@ -553,7 +711,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                                   : "border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100",
                               )}
                             >
-                              Replied — waiting on resident
+                              Replied ΓÇö waiting on resident
                             </button>
                           </form>
 
@@ -773,7 +931,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           : "Confidence unknown"}
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
-                    Sending as {session.user?.name ?? "Board manager"} • {hoa.name}
+                    Sending as {session.user?.name ?? "Board manager"} ΓÇó {hoa.name}
                   </span>
                 </div>
               </div>
@@ -782,7 +940,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                   {latestAiReply.aiReply.sent ? "Sent" : "Draft"}
                 </span>
                 <span className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 bg-white text-xs font-semibold text-slate-600 transition group-open:rotate-0 group-open:scale-95">
-                  ▾
+                  Γû╛
                 </span>
               </div>
             </summary>

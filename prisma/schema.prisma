@@ -8,15 +8,17 @@ datasource db {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  name         String?
-  passwordHash String?
-  createdAt    DateTime  @default(now())
-  accounts     Account[]
-  hoas         HOA[]
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String?
+  image           String?
+  emailVerified   DateTime?
+  passwordHash    String?
+  createdAt       DateTime  @default(now())
+  accounts        Account[]
+  hoas            HOA[]
   assignedThreads EmailThread[] @relation("ThreadAssignedToUser")
-  sessions     Session[]
+  sessions        Session[]
 }
 
 model HOA {

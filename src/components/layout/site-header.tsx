@@ -12,8 +12,8 @@ const marketingNavLinks = [
   { label: "FAQ", href: "/#faq" },
 ];
 
-const opsNavLinks = [
-  { label: "Inbox", href: "/app/dashboard" },
+const primaryOpsLink = { label: "Inbox", href: "/app/dashboard" };
+const moreOpsLinks = [
   { label: "Automations", href: "/app/automations" },
   { label: "Templates", href: "/app/templates" },
   { label: "Audit Log", href: "/app/audit" },
@@ -49,16 +49,43 @@ export function SiteHeader() {
             <p className="text-xs text-slate-500">Connect • Normalize • Reply</p>
           </div>
         </Link>
-        <nav className="hidden items-center gap-8 md:flex">
-          {(isAuthed ? opsNavLinks : marketingNavLinks).map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm font-medium text-slate-600 transition hover:text-slate-900"
-            >
-              {link.label}
-            </Link>
-          ))}
+        <nav className="hidden items-center gap-4 md:flex">
+          {isAuthed ? (
+            <>
+              <Link
+                href={primaryOpsLink.href}
+                className="text-sm font-semibold text-slate-800 transition hover:text-slate-900"
+              >
+                {primaryOpsLink.label}
+              </Link>
+              <details className="relative">
+                <summary className="flex cursor-pointer list-none items-center rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900">
+                  … More
+                </summary>
+                <div className="absolute right-0 z-20 mt-2 w-44 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+                  {moreOpsLinks.map((link) => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      className="block rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              </details>
+            </>
+          ) : (
+            marketingNavLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-sm font-medium text-slate-600 transition hover:text-slate-900"
+              >
+                {link.label}
+              </Link>
+            ))
+          )}
         </nav>
         <div className="hidden items-center gap-3 md:flex">
           {isAuthed ? (
@@ -116,16 +143,43 @@ export function SiteHeader() {
         <div className="md:hidden">
           <div className="mx-4 mb-4 rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_20px_50px_rgba(15,23,42,0.08)]">
             <nav className="flex flex-col gap-4">
-              {(isAuthed ? opsNavLinks : marketingNavLinks).map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-base font-medium text-slate-700"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {isAuthed ? (
+                <>
+                  <Link
+                    href={primaryOpsLink.href}
+                    className="text-base font-semibold text-slate-800"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {primaryOpsLink.label}
+                  </Link>
+                  <details>
+                    <summary className="cursor-pointer text-base font-medium text-slate-600">More</summary>
+                    <div className="mt-2 space-y-2 pl-2">
+                      {moreOpsLinks.map((link) => (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          className="block text-sm font-medium text-slate-700"
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          {link.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </details>
+                </>
+              ) : (
+                marketingNavLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="text-base font-medium text-slate-700"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    {link.label}
+                  </Link>
+                ))
+              )}
             </nav>
             <div className="mt-6 flex flex-col gap-3">
               {isAuthed ? (
