@@ -9,6 +9,15 @@ import { GlassPanel } from "@/components/ui/glass-panel";
 import { cn } from "@/lib/utils";
 import { runGmailPollJob } from "@/lib/jobs/gmail-poller";
 
+function formatTimestamp(date: Date) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
 function isMarketingThread(thread: { category: string | null }) {
   const category = (thread.category ?? "").toLowerCase();
   return category.includes("marketing") || category.includes("newsletter") || category.includes("system");
@@ -161,14 +170,15 @@ function priorityWeight(priority: Priority) {
   return 2;
 }
 
+function getThreadTimestamp(thread: { updatedAt: Date; messages: { receivedAt: Date }[] }) {
+  const lastMessage = thread.messages.at(-1);
+  return lastMessage?.receivedAt ?? thread.updatedAt;
+}
+
 function sortThreadsDefault<
-  T extends { updatedAt: Date; priority: string | null; classifications?: { priority: string | null }[] }
+  T extends { updatedAt: Date; messages: { receivedAt: Date }[]; priority: string | null; classifications?: { priority: string | null }[] }
 >(threads: T[]) {
-  return [...threads].sort((a, b) => {
-    const weightDiff = priorityWeight(getThreadPriority(a)) - priorityWeight(getThreadPriority(b));
-    if (weightDiff !== 0) return weightDiff;
-    return b.updatedAt.getTime() - a.updatedAt.getTime();
-  });
+  return [...threads].sort((a, b) => getThreadTimestamp(b).getTime() - getThreadTimestamp(a).getTime());
 }
 
 export default async function InboxPage({ params, searchParams }: InboxPageProps) {
@@ -334,6 +344,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
               ) : null}
               {visibleThreads.map((thread) => {
                 const lastMessage = thread.messages.at(-1);
+                const lastTimestamp = getThreadTimestamp(thread);
                 const badge = (() => {
                   if (!lastMessage?.aiReply) return "";
                   if (lastMessage.aiReply.error) return "Error";
@@ -406,9 +417,14 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                               {badge}
                             </span>
                           ) : null}
+                          <span className={cn("inline-flex items-center gap-1 text-[11px]", isActive ? "text-white/70" : "text-slate-500")}> 
+                            {formatTimestamp(lastTimestamp)}
+                          </span>
                         </div>
                       </div>
-                      {/* Timestamp removed due to data inaccuracies */}
+                      <div className={cn("shrink-0 text-right text-[11px]", isActive ? "text-white/70" : "text-slate-500")}> 
+                        {formatTimestamp(lastTimestamp)}
+                      </div>
                     </div>
                   </Link>
                 );
@@ -423,6 +439,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                   <div className="mt-3 space-y-3">
                     {sidelinedThreads.map((thread) => {
                       const lastMessage = thread.messages.at(-1);
+                      const lastTimestamp = getThreadTimestamp(thread);
                       const badge = (() => {
                         if (!lastMessage?.aiReply) return "";
                         if (lastMessage.aiReply.error) return "Error";
@@ -490,9 +507,14 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                                 <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-700">
                                   Non-HOA detected
                                 </span>
+                                <span className={cn("inline-flex items-center gap-1 text-[11px]", isActive ? "text-white/70" : "text-slate-500")}> 
+                                  {formatTimestamp(lastTimestamp)}
+                                </span>
                               </div>
                             </div>
-                            {/* Timestamp removed due to data inaccuracies */}
+                            <div className={cn("shrink-0 text-right text-[11px]", isActive ? "text-white/70" : "text-slate-500")}> 
+                              {formatTimestamp(lastTimestamp)}
+                            </div>
                           </div>
                         </Link>
                       );
@@ -967,21 +989,10 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                   </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Risk</p>
-                  <span className={cn(
-                    "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold",
-                    /legal|attorney|sue|liability/i.test(latestAiReply.aiReply.replyText)
-                      ? "bg-red-100 text-red-800"
-                      : /escalat|complaint|angry/i.test(latestAiReply.aiReply.replyText)
-                        ? "bg-amber-100 text-amber-800"
-                        : "bg-emerald-100 text-emerald-800",
-                  )}>
-                    {/legal|attorney|sue|liability/i.test(latestAiReply.aiReply.replyText)
-                      ? "Legal"
-                      : /escalat|complaint|angry/i.test(latestAiReply.aiReply.replyText)
-                        ? "Medium"
-                        : "Low"}
-                  </span>
+                  <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Classification</p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {effectiveCategory ?? "Uncategorized"} | Priority: {effectivePriority ?? "Unset"}
+                  </p>
                 </div>
                 <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                   <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">Actions</p>
@@ -992,6 +1003,14 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-blue-700 bg-blue-700 px-4 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:-translate-y-[1px] hover:bg-blue-600"
                       >
                         Send now
+                      </button>
+                    </form>
+                    <form action={`/api/messages/${latestAiReply.id}/retry-draft?variant=regenerate`} method="post">
+                      <button
+                        type="submit"
+                        className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-slate-300 bg-white px-4 py-1.5 text-xs font-semibold text-slate-800 shadow-sm transition hover:-translate-y-[1px] hover:border-blue-300 hover:text-slate-900"
+                      >
+                        Regenerate draft
                       </button>
                     </form>
                     {isSafeToSend && !latestAiReply.aiReply.sent ? (
