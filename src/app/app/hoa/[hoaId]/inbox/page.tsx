@@ -228,14 +228,6 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
   const success = Boolean(resolvedSearchParams?.success);
   const errorMsg = resolvedSearchParams?.message;
   const baseInboxPath = `/app/hoa/${resolvedParams.hoaId}/inbox`;
-  const currentHref = (() => {
-    const params = new URLSearchParams();
-    Object.entries(resolvedSearchParams ?? {}).forEach(([key, value]) => {
-      if (typeof value === "string") params.set(key, value);
-    });
-    const query = params.toString();
-    return query ? `${baseInboxPath}?${query}` : baseInboxPath;
-  })();
   const refreshInbox = async () => {
     "use server";
     await runGmailPollJob();

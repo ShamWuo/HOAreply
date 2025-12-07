@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 
@@ -35,10 +36,13 @@ export function SiteHeader() {
     >
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 md:px-6">
         <Link href="/" className="flex items-center gap-2">
-          <img
+          <Image
             src="/icon.png"
             alt="HOA Reply AI"
+            width={40}
+            height={40}
             className="h-10 w-10 rounded-2xl border border-slate-200 bg-slate-900 object-cover shadow-sm"
+            priority
           />
           <div className="text-left">
             <p className="text-sm font-semibold text-slate-900">HOA Reply AI</p>

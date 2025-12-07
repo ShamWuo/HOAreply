@@ -4,7 +4,7 @@ import { MessageDirection } from "@prisma/client";
 import { refreshAccessToken, getGmailMessage, listGmailMessages, sendGmailMessage } from "@/lib/google-api";
 import { prisma } from "@/lib/prisma";
 import type { GmailMessage } from "@/lib/google-api";
-import { logError, logInfo } from "@/lib/logger";
+import { logError, logInfo, logWarn } from "@/lib/logger";
 import { decryptString, encryptString } from "@/lib/crypto";
 
 const REFRESH_THRESHOLD_MS = 60 * 1000;
