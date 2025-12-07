@@ -14,7 +14,7 @@ function isMarketingThread(thread: { category: string | null }) {
 
 function clamp(text: string | null | undefined, max = 120) {
   if (!text) return "";
-  return text.length > max ? `${text.slice(0, max)}ΓÇª` : text;
+  return text.length > max ? `${text.slice(0, max)}...` : text;
 }
 
 interface InboxPageProps {
@@ -573,7 +573,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           </div>
                         ) : (
                           <div className="space-y-1 text-right text-slate-600">
-                            <p className="text-sm font-semibold text-slate-900">External sender ΓÇô not a resident</p>
+                            <p className="text-sm font-semibold text-slate-900">External sender - not a resident</p>
                             <p className="text-[11px] text-slate-500">No unit match found in the resident directory.</p>
                             <p className="text-[11px] text-slate-500">Sender: {firstIncomingMessage?.from ?? "Unknown"}</p>
                           </div>
@@ -598,19 +598,19 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       )}
                     >
                       {confidenceLevel === "safe"
-                        ? "Γ£à Safe to send"
+                        ? "Safe to send"
                         : confidenceLevel === "caution"
-                          ? "ΓÜá Needs skim"
+                          ? "Needs skim"
                           : confidenceLevel === "needs-review"
-                            ? "ΓÜá Needs review"
+                            ? "Needs review"
                             : "Confidence unknown"}
                     </span>
                     <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700">
-                      Sending as {session.user?.name ?? "Board manager"} ΓÇó {hoa.name}
+                      Sending as {session.user?.name ?? "Board manager"} | {hoa.name}
                     </span>
                     <details className="inline-block">
                       <summary className="flex cursor-pointer list-none items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:border-blue-200">
-                        Γôÿ Why this is safe
+                        Why this is safe
                       </summary>
                       <div className="mt-2 w-72 space-y-2 rounded-lg border border-slate-200 bg-white p-3 text-[11px] text-slate-700 shadow-lg">
                         <p>AI matched past cases ({similarCaseCount}).</p>
@@ -711,7 +711,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                                   : "border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100",
                               )}
                             >
-                              Replied ΓÇö waiting on resident
+                              Replied - waiting on resident
                             </button>
                           </form>
 
@@ -931,7 +931,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           : "Confidence unknown"}
                   </span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
-                    Sending as {session.user?.name ?? "Board manager"} ΓÇó {hoa.name}
+                    Sending as {session.user?.name ?? "Board manager"} | {hoa.name}
                   </span>
                 </div>
               </div>
@@ -940,7 +940,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                   {latestAiReply.aiReply.sent ? "Sent" : "Draft"}
                 </span>
                 <span className="flex h-7 w-7 items-center justify-center rounded-full border border-slate-300 bg-white text-xs font-semibold text-slate-600 transition group-open:rotate-0 group-open:scale-95">
-                  Γû╛
+                  v
                 </span>
               </div>
             </summary>
