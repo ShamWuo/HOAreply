@@ -100,9 +100,46 @@ export function normalizeGmailMessage(message: GmailMessage) {
 export async function fetchNewInboxMessages(account: DecryptedGmailAccount, query: string) {
   logInfo("gmail list messages", { accountId: account.id, email: account.email, query });
 
-  let list;
+  const detailed: GmailMessage[] = [];
+  let pageToken: string | undefined;
+  let fetched = 0;
+  const maxFetch = 200; // safety cap
+
   try {
-    list = await listGmailMessages(account.accessToken, query);
+    do {
+      const list = await listGmailMessages(account.accessToken, query, pageToken);
+      const messages = list.messages ?? [];
+      fetched += messages.length;
+
+      for (const meta of messages) {
+        const exists = await prisma.emailMessage.findUnique({
+          where: { gmailMessageId: meta.id },
+          select: { id: true },
+        });
+
+        if (exists) {
+          continue;
+        }
+
+        try {
+          const message = await getGmailMessage(account.accessToken, meta.id);
+          detailed.push(message);
+        } catch (error) {
+          logError("gmail get message failed", {
+            accountId: account.id,
+            email: account.email,
+            messageId: meta.id,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      pageToken = list.nextPageToken;
+      if (fetched >= maxFetch) {
+        logWarn("gmail pagination truncated", { accountId: account.id, email: account.email, fetched, query });
+        break;
+      }
+    } while (pageToken);
   } catch (error) {
     logError("gmail list failed", {
       accountId: account.id,
@@ -113,17 +150,12 @@ export async function fetchNewInboxMessages(account: DecryptedGmailAccount, quer
     throw error;
   }
 
-  const count = list.messages?.length ?? 0;
-  logInfo("gmail list results", { accountId: account.id, email: account.email, count, query });
-
-  if (!count || !list.messages) {
+  if (!detailed.length) {
+    logInfo("gmail list empty", { accountId: account.id, email: account.email, query });
     return [];
   }
 
-  const detailed: GmailMessage[] = [];
-  const messages = list.messages ?? [];
-
-  for (const meta of messages) {
+  for (const meta of detailed) {
     const exists = await prisma.emailMessage.findUnique({
       where: { gmailMessageId: meta.id },
       select: { id: true },
@@ -131,18 +163,6 @@ export async function fetchNewInboxMessages(account: DecryptedGmailAccount, quer
 
     if (exists) {
       continue;
-    }
-
-    try {
-      const message = await getGmailMessage(account.accessToken, meta.id);
-      detailed.push(message);
-    } catch (error) {
-      logError("gmail get message failed", {
-        accountId: account.id,
-        email: account.email,
-        messageId: meta.id,
-        error: error instanceof Error ? error.message : String(error),
-      });
     }
   }
 

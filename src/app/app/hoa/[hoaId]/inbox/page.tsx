@@ -269,13 +269,21 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
       <div className="relative flex min-h-screen flex-col gap-6 px-3 pb-10 pt-6 sm:px-4 lg:flex-row lg:items-start lg:px-6 lg:pt-8">
         <aside className="w-full lg:w-96">
           <GlassPanel className="h-full p-4 sm:p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <div>
                 <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">Threads</p>
                 <p className="text-xs text-slate-500">
                   {visibleThreads.length} shown / {primaryThreads.length} primary / {sidelinedThreads.length} auto-archived
                 </p>
               </div>
+              <form action={refreshInbox} className="shrink-0">
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:-translate-y-[1px] hover:border-blue-200 hover:text-slate-900"
+                >
+                  Refresh inbox
+                </button>
+              </form>
             </div>
             <div className="mt-4 space-y-3">
               <div className="flex flex-wrap items-center gap-2">
@@ -631,14 +639,6 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                         <p>Auto-draft confidence shown above; sending as {session.user?.name ?? "Board manager"}.</p>
                       </div>
                     </details>
-                    <form action={refreshInbox} className="inline-flex">
-                      <button
-                        type="submit"
-                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-600 transition hover:-translate-y-[1px] hover:border-blue-200 hover:text-slate-900"
-                      >
-                        Refresh inbox
-                      </button>
-                    </form>
                   </div>
 
                   {marketingActive ? (

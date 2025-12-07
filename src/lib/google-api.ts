@@ -98,14 +98,19 @@ async function gmailRequest<T>(path: string, accessToken: string, init?: Request
 
 type GmailListResponse = {
   messages?: Array<{ id: string; threadId: string }>;
+  nextPageToken?: string;
 };
 
-export async function listGmailMessages(accessToken: string, query: string) {
+export async function listGmailMessages(accessToken: string, query: string, pageToken?: string) {
   const params = new URLSearchParams({
     q: query,
-    maxResults: "10",
+    maxResults: "50",
     labelIds: "INBOX",
   });
+
+  if (pageToken) {
+    params.set("pageToken", pageToken);
+  }
 
   return gmailRequest<GmailListResponse>(`/messages?${params.toString()}`, accessToken);
 }
