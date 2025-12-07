@@ -541,11 +541,6 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                           {formatStatus(activeThread.status ?? ThreadStatus.NEW)}
                         </span>
                         {/* Unread chip removed; status handles attention */}
-                        {effectivePriority ? (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
-                            Priority: {effectivePriority}
-                          </span>
-                        ) : null}
                         {effectiveCategory ? (
                           <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 font-semibold text-slate-700">
                             {effectiveCategory}
@@ -584,7 +579,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       </a>
                     </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700">
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700">
                     <span
                       className={cn(
                         "inline-flex items-center gap-2 rounded-full px-3 py-1",
@@ -605,6 +600,11 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                             ? "Needs review"
                             : "Confidence unknown"}
                     </span>
+                      {effectivePriority ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700">
+                          Priority: {effectivePriority}
+                        </span>
+                      ) : null}
                     <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700">
                       Sending as {session.user?.name ?? "Board manager"} | {hoa.name}
                     </span>

@@ -13,12 +13,6 @@ const marketingNavLinks = [
 ];
 
 const primaryOpsLink = { label: "Inbox", href: "/app/dashboard" };
-const moreOpsLinks = [
-  { label: "Automations", href: "/app/automations" },
-  { label: "Templates", href: "/app/templates" },
-  { label: "Audit Log", href: "/app/audit" },
-  { label: "Settings", href: "/app/settings" },
-];
 
 export function SiteHeader() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -58,15 +52,6 @@ export function SiteHeader() {
               >
                 {primaryOpsLink.label}
               </Link>
-              {moreOpsLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-sm font-medium text-slate-700 transition hover:text-slate-900"
-                >
-                  {link.label}
-                </Link>
-              ))}
             </>
           ) : (
             marketingNavLinks.map((link) => (
@@ -145,16 +130,6 @@ export function SiteHeader() {
                   >
                     {primaryOpsLink.label}
                   </Link>
-                  {moreOpsLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className="text-base font-medium text-slate-700"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      {link.label}
-                    </Link>
-                  ))}
                 </>
               ) : (
                 marketingNavLinks.map((link) => (
