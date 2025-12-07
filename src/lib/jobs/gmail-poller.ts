@@ -12,6 +12,30 @@ const DEFAULT_QUERY = "in:anywhere category:primary newer_than:7d -from:me";
 const POLL_JOB_ID = "poll-gmail";
 const POLL_INTERVAL_MINUTES = Math.max(env.GMAIL_POLL_INTERVAL_MINUTES, 5);
 const POLL_LOCK_WINDOW_MS = POLL_INTERVAL_MINUTES * 60 * 1000;
+const DEFAULT_TOOL_DOMAINS = [
+  "sentry.io",
+  "md.getsentry.com",
+  "github.com",
+  "vercel.com",
+  "stripe.com",
+  "notion.so",
+  "linear.app",
+  "openai.com",
+];
+const DEFAULT_NOREPLY_MARKERS = ["noreply@", "no-reply@", "notification@", "notifications@", "do-not-reply@"];
+const DEFAULT_SYSTEM_PATTERNS = [
+  "confirm your email",
+  "confirm email",
+  "verify your email",
+  "verify email",
+  "email verification",
+  "security alert",
+  "new sign-in",
+  "new login",
+  "unusual activity",
+  "reset your password",
+  "password reset",
+];
 
 type PollSummary = {
   accountId: string;
@@ -25,11 +49,91 @@ type PollJobResult = {
   reason?: string;
 };
 
+type PrefilterEmail = {
+  from: string;
+  fromEmail: string;
+  to: string[];
+  cc: string[];
+  subject: string;
+  snippet: string;
+};
+
+function parseList(value: string | undefined, fallback: string[]) {
+  if (!value) return fallback;
+  return value
+    .split(/[,\n;]/)
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+const TOOL_DOMAINS = parseList(env.HOAREPLY_TOOL_DOMAINS, DEFAULT_TOOL_DOMAINS);
+const NOREPLY_MARKERS = parseList(env.HOAREPLY_NOREPLY_MARKERS, DEFAULT_NOREPLY_MARKERS);
+const SYSTEM_PATTERNS = parseList(env.HOAREPLY_SYSTEM_PATTERNS, DEFAULT_SYSTEM_PATTERNS);
+const HOA_RECIPIENTS_ALLOWLIST = parseList(env.HOAREPLY_HOA_RECIPIENTS, []);
+
 function isMarketingLike(subject: string, from: string, html: string | null | undefined, text: string | null | undefined) {
   const haystack = `${subject} ${from} ${html ?? ""} ${text ?? ""}`.toLowerCase();
   if (haystack.includes("list-unsubscribe") || haystack.includes("unsubscribe")) return true;
   if (haystack.includes("newsletter") || haystack.includes("sale") || haystack.includes("promo")) return true;
   if (haystack.includes("microsoft store") || haystack.includes("deal") || haystack.includes("pricing update")) return true;
+  return false;
+}
+
+function parseRecipientList(value: string | null | undefined) {
+  if (!value) return [] as string[];
+  return value
+    .split(/[;,]/)
+    .map((entry) => extractEmail(entry)?.toLowerCase())
+    .filter((email): email is string => Boolean(email));
+}
+
+function buildAllowedRecipients(accountEmail: string, hoaUserEmail?: string | null) {
+  const base = [accountEmail, hoaUserEmail].filter(Boolean).map((email) => email!.toLowerCase());
+  return [...base, ...HOA_RECIPIENTS_ALLOWLIST];
+}
+
+function buildSnippet(plainText: string | null | undefined, html: string | null | undefined) {
+  const raw = (plainText || html || "").trim();
+  return raw.slice(0, 200);
+}
+
+function buildPrefilterEmail(normalized: ReturnType<typeof normalizeGmailMessage>): PrefilterEmail {
+  return {
+    from: normalized.headers.from ?? "",
+    fromEmail: extractEmail(normalized.headers.from) ?? normalized.headers.from ?? "",
+    to: parseRecipientList(normalized.headers.to),
+    cc: parseRecipientList(normalized.headers.cc),
+    subject: normalized.headers.subject ?? "",
+    snippet: buildSnippet(normalized.plainText, normalized.html),
+  };
+}
+
+function isToHoaAddress(msg: PrefilterEmail, allowedRecipients: string[]) {
+  if (!allowedRecipients.length) return false;
+  const recipients = [...msg.to, ...msg.cc];
+  return recipients.some((r) => allowedRecipients.some((hoa) => r.includes(hoa)));
+}
+
+function isToolDomain(msg: PrefilterEmail) {
+  const domain = msg.fromEmail.split("@")[1] ?? "";
+  return TOOL_DOMAINS.some((toolDomain) => domain.endsWith(toolDomain));
+}
+
+function isNoReplySender(msg: PrefilterEmail) {
+  const email = msg.fromEmail.toLowerCase();
+  return NOREPLY_MARKERS.some((marker) => email.includes(marker));
+}
+
+function looksLikeSystemConfirmation(msg: PrefilterEmail) {
+  const text = `${msg.subject} ${msg.snippet}`.toLowerCase();
+  return SYSTEM_PATTERNS.some((pattern) => text.includes(pattern));
+}
+
+function shouldSkipForAI(msg: PrefilterEmail, allowedRecipients: string[]) {
+  if (!isToHoaAddress(msg, allowedRecipients)) return true;
+  if (isToolDomain(msg)) return true;
+  if (isNoReplySender(msg)) return true;
+  if (looksLikeSystemConfirmation(msg)) return true;
   return false;
 }
 
@@ -149,6 +253,20 @@ async function processAccount(accountId: string) {
 
     for (const message of messages) {
       const normalized = normalizeGmailMessage(message);
+      const prefilterEmail = buildPrefilterEmail(normalized);
+      const allowedRecipients = buildAllowedRecipients(freshAccount.email, account.hoa?.user?.email);
+
+      if (shouldSkipForAI(prefilterEmail, allowedRecipients)) {
+        logInfo("poll-gmail skip prefilter", {
+          accountId: account.id,
+          email: freshAccount.email,
+          threadId: message.threadId,
+          subject: normalized.headers.subject,
+          from: prefilterEmail.fromEmail,
+        });
+        continue;
+      }
+
       const marketing = isMarketingLike(
         normalized.headers.subject ?? "",
         normalized.headers.from ?? "",
@@ -181,8 +299,6 @@ async function processAccount(accountId: string) {
           subject: normalized.headers.subject,
           updatedAt: new Date(),
           gmailAccountId: freshAccount.id,
-          status: ThreadStatus.NEW,
-          category: undefined,
           unreadCount: { increment: 1 },
         },
         create: {

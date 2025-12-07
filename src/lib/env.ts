@@ -16,6 +16,10 @@ const envSchema = z.object({
   N8N_CLASSIFY_DRAFT_URL: z.string().url().optional(),
   N8N_HOAREPLY_SECRET: z.string().optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
+  HOAREPLY_TOOL_DOMAINS: z.string().optional(),
+  HOAREPLY_NOREPLY_MARKERS: z.string().optional(),
+  HOAREPLY_SYSTEM_PATTERNS: z.string().optional(),
+  HOAREPLY_HOA_RECIPIENTS: z.string().optional(),
   ENCRYPTION_KEY: z
     .string()
     .min(32)
@@ -38,6 +42,10 @@ const envResult = envSchema.safeParse({
   N8N_CLASSIFY_DRAFT_URL: process.env.N8N_CLASSIFY_DRAFT_URL,
   N8N_HOAREPLY_SECRET: process.env.N8N_HOAREPLY_SECRET,
   OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  HOAREPLY_TOOL_DOMAINS: process.env.HOAREPLY_TOOL_DOMAINS,
+  HOAREPLY_NOREPLY_MARKERS: process.env.HOAREPLY_NOREPLY_MARKERS,
+  HOAREPLY_SYSTEM_PATTERNS: process.env.HOAREPLY_SYSTEM_PATTERNS,
+  HOAREPLY_HOA_RECIPIENTS: process.env.HOAREPLY_HOA_RECIPIENTS,
   ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
 });
 

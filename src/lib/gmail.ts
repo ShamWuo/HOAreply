@@ -47,6 +47,7 @@ export function parseGmailHeaders(message: GmailMessage) {
     subject: headerMap.get("subject") ?? "(no subject)",
     from: headerMap.get("from") ?? "",
     to: headerMap.get("to") ?? "",
+    cc: headerMap.get("cc") ?? "",
     messageId: headerMap.get("message-id"),
     references: headerMap.get("references"),
     inReplyTo: headerMap.get("in-reply-to"),

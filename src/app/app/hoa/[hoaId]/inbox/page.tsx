@@ -330,9 +330,9 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                 const isActive = activeThread && thread.id === activeThread.id;
                 const needsAttention = thread.unreadCount > 0 || CANONICAL_STATUS_MAP[thread.status] !== "CLOSED";
                 const statusIcon = {
-                  OPEN: "?",
-                  WAITING: "?",
-                  CLOSED: "?",
+                  OPEN: "●",
+                  WAITING: "⧖",
+                  CLOSED: "✓",
                 }[CANONICAL_STATUS_MAP[thread.status]];
                 const priorityLabel = getThreadPriority(thread);
                 const categoryLabel = getThreadCategory(thread);
@@ -419,9 +419,9 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       const isActive = activeThread && thread.id === activeThread.id;
                       const needsAttention = thread.unreadCount > 0 || CANONICAL_STATUS_MAP[thread.status] !== "CLOSED";
                       const statusIcon = {
-                        OPEN: "?",
-                        WAITING: "?",
-                        CLOSED: "?",
+                        OPEN: "●",
+                        WAITING: "⧖",
+                        CLOSED: "✓",
                       }[CANONICAL_STATUS_MAP[thread.status]];
 
                       return (
