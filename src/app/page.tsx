@@ -66,11 +66,9 @@ const howItWorks = [
 ];
 
 const screenshots = [
-  "Dashboard overview",
-  "Email classification",
-  "AI reply draft",
-  "Google Sheets log",
-  "Gmail connection flow",
+  { title: "Inbox with priorities", caption: "Shows High / Needs Review first, Gmail stays source of truth." },
+  { title: "AI draft review", caption: "Approve, edit, or regenerate before sending." },
+  { title: "Poll + audit log", caption: "Every classification and send is logged for boards." },
 ];
 
 const pricingPlans = [
@@ -113,9 +111,9 @@ const faq = [
 
 const caseStudy = {
   title: "143 emails handled in 7 days",
-  subtitle: "Community manager, Colorado",
+  subtitle: "Community manager, Colorado pilot",
   bullets: [
-    "Cut inbox time by 42% in the first week",
+    "Cut inbox time by 42% (week 1, 143 emails)",
     "Reduced angry follow-ups by 36%",
     "Reply tone became consistent across the board",
     "Manager took on 2 extra communities with no overtime",
@@ -200,8 +198,9 @@ export default function Home() {
         <section id="screenshots" className="space-y-6 rounded-[32px] border border-white/60 bg-white/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.08)] animate-fade-up animate-delay-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Screenshots</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Proof</p>
               <h3 className="text-2xl font-semibold text-slate-900">See it before you try it</h3>
+              <p className="text-sm text-slate-600">Real UI, no vaporware.</p>
             </div>
             <Link href="/auth/login" className="text-sm font-semibold text-blue-600">
               View demo
@@ -209,8 +208,10 @@ export default function Home() {
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             {screenshots.map((shot) => (
-              <div key={shot} className="card-tilt aspect-video rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-center text-sm text-slate-500">
-                <div className="flex h-full items-center justify-center">Add {shot} mockup</div>
+              <div key={shot.title} className="card-tilt aspect-video rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
+                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">{shot.title}</p>
+                <p className="mt-2 text-sm text-slate-600">{shot.caption}</p>
+                <div className="mt-4 h-full rounded-xl border border-dashed border-slate-200 bg-white/70" />
               </div>
             ))}
           </div>
@@ -236,7 +237,7 @@ export default function Home() {
           <div className="flex flex-col gap-2">
             <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">Pricing</p>
             <h3 className="text-3xl font-semibold text-slate-900">Simple plans</h3>
-            <p className="text-sm text-slate-600">Setup included. Cancel anytime.</p>
+            <p className="text-sm text-slate-600">Setup included. One hour/day saved pays for itself in a week.</p>
           </div>
           <div className="grid gap-6 md:grid-cols-2">
             {pricingPlans.map((plan) => (

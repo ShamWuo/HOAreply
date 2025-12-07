@@ -35,9 +35,11 @@ export function SiteHeader() {
     >
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 md:px-6">
         <Link href="/" className="flex items-center gap-2">
-          <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white">
-            HR
-          </span>
+          <img
+            src="/icon.png"
+            alt="HOA Reply AI"
+            className="h-10 w-10 rounded-2xl border border-slate-200 bg-slate-900 object-cover shadow-sm"
+          />
           <div className="text-left">
             <p className="text-sm font-semibold text-slate-900">HOA Reply AI</p>
             <p className="text-xs text-slate-500">Connect • Normalize • Reply</p>

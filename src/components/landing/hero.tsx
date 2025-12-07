@@ -12,31 +12,41 @@ export function LandingHero() {
       <div className="relative grid gap-12 lg:grid-cols-2 lg:items-center">
         <div className="space-y-8 animate-fade-up">
           <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-blue-700">
-            Built for busy HOA boards
+            Built for HOA managers under pressure
           </div>
           <div>
             <h1 className="text-4xl font-bold leading-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              Automate HOA inbox triage with Gmail in 5 minutes.
+              Stop drowning in HOA emails without hiring staff.
             </h1>
             <p className="mt-4 text-lg text-slate-600">
-              AI reads every resident email, classifies it, drafts the reply, and you approve with one click. Your Gmail stays the source of truth.
+              AI drafts replies, flags urgent issues, and keeps Gmail as your source of truth. Residents get answers. Boards calm down. You get your evenings back.
             </p>
-            <p className="mt-3 text-sm text-slate-600">Cut reply time by 40–60% in the first week.</p>
+            <p className="mt-3 text-sm font-semibold text-slate-800">40–60% faster replies (143 emails, Colorado pilot, week 1).</p>
           </div>
-          <div className="flex">
+          <div className="flex flex-wrap gap-3">
             <Link
-              href={schedulingLink}
+              href="/auth/signup"
               className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-7 py-3 text-sm font-semibold text-white shadow-[0_20px_45px_rgba(37,99,235,0.35)] transition hover:from-blue-500 hover:to-blue-500"
             >
-              Book intro call
+              Start free (no card)
+            </Link>
+            <Link
+              href={schedulingLink}
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 px-7 py-3 text-sm font-semibold text-slate-900 transition hover:border-blue-200"
+            >
+              Book 15-min intro
             </Link>
           </div>
           <div className="text-sm text-slate-600">No credit card • Secure Google OAuth • 10-minute setup</div>
+          <div className="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+            <span className="rounded-full bg-slate-100 px-3 py-1">Used by Colorado community managers</span>
+            <span className="rounded-full bg-slate-100 px-3 py-1">Pilot live: 3 communities / 143 emails</span>
+          </div>
           <div className="grid gap-6 sm:grid-cols-3">
             {[
-              { label: "Replies drafted", value: "Most emails" },
-              { label: "Reduction in inbox time", value: "Up to 50%" },
-              { label: "Setup time", value: "< 10 minutes" },
+              { label: "Replies drafted", value: "87%", note: "Colorado pilot" },
+              { label: "Inbox time saved", value: "42%", note: "Week 1, 143 emails" },
+              { label: "Setup time", value: "10 min", note: "Gmail + n8n" },
             ].map((stat) => (
               <div
                 key={stat.label}
@@ -44,6 +54,7 @@ export function LandingHero() {
               >
                 <p className="text-2xl font-semibold text-slate-900">{stat.value}</p>
                 <p className="text-xs uppercase tracking-[0.4em] text-slate-500">{stat.label}</p>
+                {stat.note ? <p className="text-[11px] text-slate-500">{stat.note}</p> : null}
               </div>
             ))}
           </div>

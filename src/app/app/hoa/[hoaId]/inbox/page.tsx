@@ -136,13 +136,13 @@ function getThreadPriority(thread: { priority: string | null; classifications?: 
   return "normal";
 }
 
-function getThreadCategory(thread: { category: string | null; classifications?: { category: string | null }[] }) {
-  const primary = thread.category?.trim().toLowerCase() ?? "";
-  const fromHistory = thread.classifications?.[0]?.category?.trim().toLowerCase() ?? "";
-  const category = primary || fromHistory;
-  return ALLOWED_CATEGORY_FILTERS.includes(category as CategoryFilter) && category !== "all"
-    ? (category as Exclude<CategoryFilter, "all">)
-    : "";
+function resolveThreadCategory(thread: { category: string | null; classifications?: { category: string | null }[] }) {
+  const primaryRaw = thread.category?.trim() ?? "";
+  const historyRaw = thread.classifications?.[0]?.category?.trim() ?? "";
+  const raw = primaryRaw || historyRaw;
+  const key = raw.toLowerCase();
+  const filterKey = ALLOWED_CATEGORY_FILTERS.includes(key as CategoryFilter) && key !== "all" ? key : "";
+  return { filterKey, label: raw };
 }
 
 function matchesPriorityFilter(thread: { priority: string | null; classifications?: { priority: string | null }[] }, filter: PriorityFilter) {
@@ -152,7 +152,7 @@ function matchesPriorityFilter(thread: { priority: string | null; classification
 
 function matchesCategoryFilter(thread: { category: string | null; classifications?: { category: string | null }[] }, filter: CategoryFilter) {
   if (filter === "all") return true;
-  return getThreadCategory(thread) === filter;
+  return resolveThreadCategory(thread).filterKey === filter;
 }
 
 function priorityWeight(priority: Priority) {
@@ -208,9 +208,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
   const firstIncomingMessage = activeThread?.messages.find((m) => m.direction === MessageDirection.INCOMING) ?? activeThread?.messages[0];
   const residentContext = firstIncomingMessage?.resident;
   const similarCaseCount = activeThread?.classifications?.length ?? 0;
-  const effectiveCategory = activeThread
-    ? getThreadCategory(activeThread) || activeThread.category || activeThread.classifications?.[0]?.category || null
-    : null;
+  const effectiveCategory = activeThread ? resolveThreadCategory(activeThread).label || null : null;
   const effectivePriority = activeThread ? getThreadPriority(activeThread) : null;
   const minutesSaved = Math.min(24, Math.max(8, Math.round(((latestAiReply?.aiReply?.replyText?.length ?? 200) / 120) + 7)));
   const canonicalStatus = activeThread ? CANONICAL_STATUS_MAP[activeThread.status ?? ThreadStatus.NEW] : "OPEN";
@@ -350,7 +348,7 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                   CLOSED: "✓",
                 }[CANONICAL_STATUS_MAP[thread.status]];
                 const priorityLabel = getThreadPriority(thread);
-                const categoryLabel = getThreadCategory(thread);
+                const categoryLabel = resolveThreadCategory(thread).label;
 
                 return (
                   <Link
