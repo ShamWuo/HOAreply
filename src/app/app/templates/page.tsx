@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { RequestCategory, RequestPriority } from "@prisma/client";
+import { RequestCategory, RequestStatus } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { cn } from "@/lib/utils";
 
@@ -8,10 +8,12 @@ type Template = {
   id: string;
   hoaId: string;
   category: RequestCategory;
-  priority: RequestPriority | null;
+  appliesToStatus: RequestStatus | null;
   title: string;
   bodyTemplate: string;
   isDefault: boolean;
+  isActive: boolean;
+  missingFields: string[];
   updatedAt: string;
 };
 
@@ -67,8 +69,8 @@ export default async function TemplatesPage() {
                 <tr className="border-b border-[var(--color-border)]">
                   <th className="px-4 py-2">Template Name</th>
                   <th className="px-4 py-2">Category</th>
-                  <th className="px-4 py-2">Priority</th>
-                  <th className="px-4 py-2">Status</th>
+                  <th className="px-4 py-2">Applies when</th>
+                  <th className="px-4 py-2">Availability</th>
                   <th className="px-4 py-2">Last Updated</th>
                 </tr>
               </thead>
@@ -82,27 +84,36 @@ export default async function TemplatesPage() {
                     <td className="px-4 py-3 align-top">
                       <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{policy.category}</span>
                     </td>
-                    <td className="px-4 py-3 align-top">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
-                          policy.priority === RequestPriority.URGENT || policy.priority === RequestPriority.HIGH
-                            ? "bg-red-100 text-red-800"
-                            : "bg-slate-100 text-slate-700",
+                  <td className="px-4 py-3 align-top">
+                      <div className="flex flex-col gap-1 text-xs text-[var(--color-muted)]">
+                        <span className="inline-flex w-fit items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                          Status: {policy.appliesToStatus ?? "Any"}
+                        </span>
+                        {policy.missingFields?.length ? (
+                          <span className="inline-flex w-fit items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                            Requires: {policy.missingFields.join(", ")}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-[var(--color-muted)]">No missing-field requirements</span>
                         )}
-                      >
-                        {policy.priority ?? "Any"}
-                      </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3 align-top">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
-                          policy.isDefault ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700",
-                        )}
-                      >
-                        {policy.isDefault ? "Active" : "Inactive"}
-                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
+                            policy.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700",
+                          )}
+                        >
+                          {policy.isActive ? "Available for use" : "Inactive"}
+                        </span>
+                        {policy.isDefault ? (
+                          <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
+                            Default for situation
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-4 py-3 align-top text-[var(--color-muted)]">{new Date(policy.updatedAt).toLocaleString()}</td>
                     <Link href={`/app/templates/${policy.id}`} className="absolute inset-0" aria-label={`Open template ${policy.title}`} />

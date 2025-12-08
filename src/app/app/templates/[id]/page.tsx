@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { RequestCategory, RequestPriority } from "@prisma/client";
+import { RequestCategory, RequestStatus } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
 
 type Template = {
   id: string;
   hoaId: string;
   category: RequestCategory;
-  priority: RequestPriority | null;
+  appliesToStatus: RequestStatus | null;
   title: string;
   bodyTemplate: string;
   isDefault: boolean;
+  isActive: boolean;
+  missingFields: string[];
 };
 
 type Hoa = { id: string; name: string };
@@ -54,6 +56,8 @@ export default async function TemplateDetailPage({ params }: PageProps) {
   const isNew = id === "new";
   const hoas = await fetchHoas();
   const template = isNew ? null : await fetchTemplate(id);
+  const hoaName = template ? hoas.find((h) => h.id === template.hoaId)?.name ?? "" : hoas[0]?.name ?? "";
+  const hoaId = template ? template.hoaId : hoas[0]?.id ?? "";
 
   return (
     <div className="space-y-6">
@@ -70,6 +74,7 @@ export default async function TemplateDetailPage({ params }: PageProps) {
       <GlassPanel className="p-6 space-y-4">
         <form action={isNew ? "/api/policies" : `/api/policies/${id}`} method="post" className="space-y-4">
           {!isNew ? <input type="hidden" name="_method" value="PUT" /> : null}
+          <input type="hidden" name="hoaId" value={hoaId} />
           <div className="grid gap-4 md:grid-cols-2">
             <label className="space-y-1 text-sm text-[var(--color-ink)]">
               <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Template Name</span>
@@ -80,24 +85,12 @@ export default async function TemplateDetailPage({ params }: PageProps) {
                 className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm"
               />
             </label>
-            <label className="space-y-1 text-sm text-[var(--color-ink)]">
+            <div className="space-y-1 text-sm text-[var(--color-ink)]">
               <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">HOA</span>
-              <select
-                name="hoaId"
-                defaultValue={template?.hoaId ?? ""}
-                required
-                className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm"
-              >
-                <option value="" disabled>
-                  Select HOA
-                </option>
-                {hoas.map((hoa) => (
-                  <option key={hoa.id} value={hoa.id}>
-                    {hoa.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <div className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-muted)]">
+                {hoaName || "Current HOA"}
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
@@ -116,25 +109,40 @@ export default async function TemplateDetailPage({ params }: PageProps) {
               </select>
             </label>
             <label className="space-y-1 text-sm text-[var(--color-ink)]">
-              <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Priority</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Applies when status is</span>
               <select
-                name="priority"
-                defaultValue={template?.priority ?? ""}
+                name="appliesToStatus"
+                defaultValue={template?.appliesToStatus ?? ""}
                 className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm"
               >
                 <option value="">Any</option>
-                {Object.values(RequestPriority).map((priority) => (
-                  <option key={priority} value={priority}>
-                    {priority}
+                {Object.values(RequestStatus).map((status) => (
+                  <option key={status} value={status}>
+                    {status}
                   </option>
                 ))}
               </select>
             </label>
             <label className="flex items-center gap-2 pt-6 text-sm text-[var(--color-ink)]">
               <input type="checkbox" name="isDefault" defaultChecked={template?.isDefault ?? false} className="h-4 w-4" />
-              <span className="text-sm text-[var(--color-muted)]">Active</span>
+              <span className="text-sm text-[var(--color-muted)]">Default for this situation</span>
+            </label>
+            <label className="flex items-center gap-2 pt-6 text-sm text-[var(--color-ink)]">
+              <input type="checkbox" name="isActive" defaultChecked={template?.isActive ?? true} className="h-4 w-4" />
+              <span className="text-sm text-[var(--color-muted)]">Available for use</span>
             </label>
           </div>
+
+          <label className="space-y-1 text-sm text-[var(--color-ink)]">
+            <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Requires missing fields</span>
+            <input
+              name="missingFields"
+              defaultValue={template?.missingFields?.join(", ") ?? ""}
+              placeholder="Comma-separated keys, e.g. unit_number, photos"
+              className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm"
+            />
+            <p className="text-[11px] text-[var(--color-muted)]">Used to gate suggestions when these fields are missing.</p>
+          </label>
 
           <label className="space-y-1 text-sm text-[var(--color-ink)]">
             <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Template Body</span>

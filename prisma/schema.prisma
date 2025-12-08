@@ -187,6 +187,7 @@ model PolicyTemplate {
   title            String
   bodyTemplate     String
   isDefault        Boolean           @default(false)
+  isActive         Boolean           @default(true)
   appliesToStatus  RequestStatus?
   missingFields    String[]          @default([])
   createdAt        DateTime          @default(now())

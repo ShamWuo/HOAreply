@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { RequestCategory, RequestPriority } from "@prisma/client";
+import { RequestCategory, RequestPriority, RequestStatus } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -40,17 +40,37 @@ export async function PUT(req: Request, context: Context) {
   }
 
   const data = await req.json().catch(() => ({}));
-  const { category, priority, title, bodyTemplate, isDefault } = data as Record<string, unknown>;
+  const { category, priority, title, bodyTemplate, isDefault, appliesToStatus, missingFields, isActive } = data as Record<string, unknown>;
 
-  const updated = await prisma.policyTemplate.update({
-    where: { id },
-    data: {
-      category: category ? (category as RequestCategory) : existing.category,
-      priority: priority ? (priority as RequestPriority) : null,
-      title: title ? String(title) : existing.title,
-      bodyTemplate: bodyTemplate ? String(bodyTemplate) : existing.bodyTemplate,
-      isDefault: isDefault === undefined ? existing.isDefault : Boolean(isDefault),
-    },
+  const parsedMissing =
+    Array.isArray(missingFields) ? missingFields.map((v) => String(v).trim()).filter(Boolean) : typeof missingFields === "string" ? missingFields.split(",").map((v) => v.trim()).filter(Boolean) : [];
+
+  const nextCategory = (category as RequestCategory) || existing.category;
+  const nextStatus = appliesToStatus ? (appliesToStatus as RequestStatus) : existing.appliesToStatus ?? null;
+  const nextIsActive = isActive === undefined ? existing.isActive : Boolean(isActive);
+  const nextIsDefault = nextIsActive ? (isDefault === undefined ? existing.isDefault : Boolean(isDefault)) : false;
+
+  const updated = await prisma.$transaction(async (tx) => {
+    if (nextIsDefault) {
+      await tx.policyTemplate.updateMany({
+        where: { hoaId: existing.hoaId, category: nextCategory, appliesToStatus: nextStatus },
+        data: { isDefault: false },
+      });
+    }
+
+    return tx.policyTemplate.update({
+      where: { id },
+      data: {
+        category: nextCategory,
+        priority: priority ? (priority as RequestPriority) : null,
+        title: title ? String(title) : existing.title,
+        bodyTemplate: bodyTemplate ? String(bodyTemplate) : existing.bodyTemplate,
+        isDefault: nextIsDefault,
+        isActive: nextIsActive,
+        appliesToStatus: nextStatus,
+        missingFields: parsedMissing.length ? parsedMissing : [],
+      },
+    });
   });
 
   const contentType = req.headers.get("content-type") ?? "";

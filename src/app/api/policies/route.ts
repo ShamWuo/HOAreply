@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     const form = await req.formData().catch(() => null);
     if (form) data = Object.fromEntries(form.entries());
   }
-  const { hoaId, category, priority, title, bodyTemplate, isDefault, appliesToStatus, missingFields } = data;
+  const { hoaId, category, priority, title, bodyTemplate, isDefault, appliesToStatus, missingFields, isActive } = data;
 
   if (!hoaId || !category || !title || !bodyTemplate) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -52,6 +52,7 @@ export async function POST(req: Request) {
   const parsedMissing =
     Array.isArray(missingFields) ? missingFields.map((v) => String(v).trim()).filter(Boolean) : typeof missingFields === "string" ? missingFields.split(",").map((v) => v.trim()).filter(Boolean) : [];
 
+  const nextIsActive = isActive === undefined ? true : Boolean(isActive);
   const policy = await prisma.$transaction(async (tx) => {
     if (isDefault) {
       await tx.policyTemplate.updateMany({
@@ -67,7 +68,8 @@ export async function POST(req: Request) {
         priority: priority ? (priority as RequestPriority) : null,
         title: String(title),
         bodyTemplate: String(bodyTemplate),
-        isDefault: Boolean(isDefault),
+        isDefault: Boolean(isDefault) && nextIsActive,
+        isActive: nextIsActive,
         appliesToStatus: appliesToStatus ? (appliesToStatus as RequestStatus) : null,
         missingFields: parsedMissing,
       },
