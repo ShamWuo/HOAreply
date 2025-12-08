@@ -11,6 +11,7 @@ export const INBOX_STATUSES: RequestStatus[] = [
 export type InboxItem = {
   id: string;
   summary: string;
+  subject: string;
   residentDisplayName: string;
   category: RequestCategory;
   priority: RequestPriority;
@@ -55,6 +56,7 @@ export async function getInboxItemsForUser(userId: string, opts?: { limit?: numb
   const items: InboxItem[] = requests.map((req) => ({
     id: req.id,
     summary: (req.summary ?? req.subject ?? "Resident request").trim(),
+    subject: req.subject ?? "Resident request",
     residentDisplayName: req.resident?.name || req.resident?.email || "Unknown resident",
     category: req.category,
     priority: req.priority,
