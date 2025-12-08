@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { RequestCategory } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
+import { DeleteHoaButton } from "@/components/hoa/delete-hoa-button";
 import { auth } from "@/lib/auth";
 import { getSettingsOverview } from "@/lib/queries/settings";
 
@@ -43,12 +44,7 @@ export default async function SettingsPage() {
       </header>
 
       <GlassPanel className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">HOA Workspaces</p>
-          <Link href="/app/templates" className="text-xs font-semibold text-[var(--color-ink)] hover:underline">
-            Manage templates
-          </Link>
-        </div>
+        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">HOA Workspaces</p>
 
         {hoas.length === 0 ? (
           <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-white/70 p-10 text-center text-sm text-[var(--color-muted)]">
@@ -113,51 +109,11 @@ export default async function SettingsPage() {
                     >
                       {connected ? "Reconnect Gmail" : "Connect Gmail"}
                     </Link>
+                    <DeleteHoaButton hoaId={hoa.id} />
                   </div>
                 </div>
               );
             })}
-          </div>
-        )}
-      </GlassPanel>
-
-      <GlassPanel className="p-6 space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Gmail connections</p>
-
-        {hoas.length === 0 ? (
-          <p className="text-sm text-[var(--color-muted)]">No inboxes to connect yet.</p>
-        ) : (
-          <div className="space-y-3">
-            {hoas.map((hoa) => (
-              <div key={hoa.id} className="rounded-lg border border-[var(--color-border)] bg-white/80 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-muted)]">{hoa.name}</p>
-                    <p className="text-sm font-semibold text-[var(--color-ink)]">
-                      {hoa.gmail ? `Connected to ${hoa.gmail.email}` : "Not connected"}
-                    </p>
-                    <p className="text-xs text-[var(--color-muted)]">Last poll: {formatDateTime(hoa.gmail?.lastPolledAt ?? null)}</p>
-                    {hoa.gmail?.lastPollError ? (
-                      <p className="text-xs font-semibold text-rose-700">Last error: {hoa.gmail.lastPollError}</p>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Link
-                      href={`/connect/gmail?hoaId=${hoa.id}`}
-                      className="inline-flex items-center rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
-                    >
-                      {hoa.gmail ? "Reconnect" : "Connect"}
-                    </Link>
-                    <Link
-                      href={`/app/hoa/${hoa.id}`}
-                      className="inline-flex items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
-                    >
-                      Workspace
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
           </div>
         )}
       </GlassPanel>
