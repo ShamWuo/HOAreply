@@ -49,7 +49,8 @@ export function RequestsFilters({ resolvedSearch }: Props) {
     }
     const next = params.toString();
     startTransition(() => {
-      router.replace(next ? `${pathname}?${next}` : pathname);
+      const safePath = pathname ?? "/app/requests";
+      router.replace(next ? `${safePath}?${next}` : safePath);
     });
   };
 
