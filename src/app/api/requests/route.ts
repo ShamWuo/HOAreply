@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { RequestCategory, RequestPriority, RequestStatus } from "@prisma/client";
+import { Prisma, RequestCategory, RequestPriority, RequestStatus } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized HOA" }, { status: 403 });
   }
 
-  const where = {
+  const where: Prisma.RequestWhereInput = {
     hoaId: { in: scopedHoaIds },
     status: statusFilter && statusFilter.length ? { in: statusFilter } : undefined,
     priority: priorityFilter && priorityFilter.length ? { in: priorityFilter } : undefined,
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
           { resident: { name: { contains: q, mode: "insensitive" } } },
         ]
       : undefined,
-  } as const;
+  };
 
   const [requests, total] = await Promise.all([
     prisma.request.findMany({
