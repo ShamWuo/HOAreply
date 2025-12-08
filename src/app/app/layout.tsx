@@ -21,7 +21,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         userRole="Member"
       />
       <main className="flex-1">
-        <div className="mx-auto w-full max-w-6xl px-4 py-10 md:px-6">{children}</div>
+        <div className="mx-auto w-full max-w-7xl px-6 py-10 md:px-10">{children}</div>
       </main>
     </div>
   );
