@@ -1,6 +1,7 @@
 import {
   AuditAction,
   DraftAuthor,
+  DraftSource,
   RequestCategory,
   RequestKind,
   RequestPriority,
@@ -162,17 +163,17 @@ function renderTemplate(body: string, ctx: TemplateContext): string {
   });
 }
 
-async function pickTemplate(hoaId: string, category: RequestCategory, priority: RequestPriority) {
+async function pickTemplate(hoaId: string, category: RequestCategory, status: RequestStatus) {
   const template = await prisma.policyTemplate.findFirst({
-    where: { hoaId, category, priority },
-    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+    where: { hoaId, category, requestStatus: status, isActive: true },
+    orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
   });
 
   if (template) return template;
 
   const fallback = await prisma.policyTemplate.findFirst({
-    where: { hoaId, category },
-    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+    where: { hoaId, category, isActive: true },
+    orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
   });
 
   if (fallback) return fallback;
@@ -186,8 +187,8 @@ async function pickTemplate(hoaId: string, category: RequestCategory, priority: 
 
 async function pickRequestInfoTemplate(hoaId: string) {
   const template = await prisma.policyTemplate.findFirst({
-    where: { hoaId },
-    orderBy: [{ isDefault: "desc" }, { createdAt: "desc" }],
+    where: { hoaId, isActive: true, requestStatus: RequestStatus.NEEDS_INFO },
+    orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
   });
 
   if (template) return template;
@@ -263,7 +264,7 @@ export async function runRequestPipeline(requestId: string) {
 
   const template = classification.missingInfo.length > 0
     ? await pickRequestInfoTemplate(request.hoaId)
-    : await pickTemplate(request.hoaId, classification.category, classification.priority);
+    : await pickTemplate(request.hoaId, classification.category, routing.status);
 
   const draftContent = renderTemplate(template.bodyTemplate, {
     hoaName: request.hoa.name,
@@ -282,6 +283,7 @@ export async function runRequestPipeline(requestId: string) {
       messageId: latestMessage?.id,
       content: draftContent,
       createdBy: DraftAuthor.ai,
+      source: template.id ? DraftSource.TEMPLATE : DraftSource.MANUAL,
     },
   });
 
@@ -303,9 +305,17 @@ export async function runRequestPipeline(requestId: string) {
         hoaId: request.hoaId,
         requestId: request.id,
         action: AuditAction.DRAFT_GENERATED,
-        metadata: { draftId: draft.id, templateId: template.id },
+        metadata: { draftId: draft.id, templateId: template.id, source: draft.source },
       },
-    ],
+      template.id
+        ? {
+            hoaId: request.hoaId,
+            requestId: request.id,
+            action: AuditAction.TEMPLATE_APPLIED,
+            metadata: { draftId: draft.id, templateId: template.id },
+          }
+        : null,
+    ].filter(Boolean) as Parameters<typeof prisma.auditLog.createMany>[0]["data"],
   });
 
   logInfo("request-pipeline run", {
@@ -433,7 +443,7 @@ export async function handleInboundRequest(params: {
 
   const template = classification.missingInfo.length > 0
     ? await pickRequestInfoTemplate(params.hoaId)
-    : await pickTemplate(params.hoaId, classification.category, classification.priority);
+    : await pickTemplate(params.hoaId, classification.category, routing.status);
 
   const draftContent = renderTemplate(template.bodyTemplate, {
     hoaName: params.hoaName,
@@ -451,6 +461,7 @@ export async function handleInboundRequest(params: {
       templateId: template.id ?? undefined,
       content: draftContent,
       createdBy: DraftAuthor.ai,
+      source: template.id ? DraftSource.TEMPLATE : DraftSource.MANUAL,
     },
   });
 
@@ -478,7 +489,7 @@ export async function handleInboundRequest(params: {
         hoaId: params.hoaId,
         requestId: request.id,
         action: AuditAction.DRAFT_GENERATED,
-        metadata: { draftId: draft.id, templateId: template.id },
+        metadata: { draftId: draft.id, templateId: template.id, source: draft.source },
       },
       {
         hoaId: params.hoaId,
@@ -486,7 +497,15 @@ export async function handleInboundRequest(params: {
         action: AuditAction.STATUS_CHANGED,
         metadata: { status: routing.status, slaDueAt: routing.slaDueAt },
       },
-    ],
+      template.id
+        ? {
+            hoaId: params.hoaId,
+            requestId: request.id,
+            action: AuditAction.TEMPLATE_APPLIED,
+            metadata: { draftId: draft.id, templateId: template.id },
+          }
+        : null,
+    ].filter(Boolean) as Parameters<typeof prisma.auditLog.createMany>[0]["data"],
   });
 
   logInfo("request-pipeline processed", {

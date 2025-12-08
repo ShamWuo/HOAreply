@@ -8,7 +8,7 @@ type Template = {
   id: string;
   hoaId: string;
   category: RequestCategory;
-  appliesToStatus: RequestStatus | null;
+  requestStatus: RequestStatus;
   title: string;
   bodyTemplate: string;
   isDefault: boolean;
@@ -87,7 +87,7 @@ export default async function TemplatesPage() {
                   <td className="px-4 py-3 align-top">
                       <div className="flex flex-col gap-1 text-xs text-[var(--color-muted)]">
                         <span className="inline-flex w-fit items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
-                          Status: {policy.appliesToStatus ?? "Any"}
+                          Status: {policy.requestStatus}
                         </span>
                         {policy.missingFields?.length ? (
                           <span className="inline-flex w-fit items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">

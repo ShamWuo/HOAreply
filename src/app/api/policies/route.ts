@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { RequestCategory, RequestPriority, RequestStatus } from "@prisma/client";
+import { AuditAction, RequestCategory, RequestStatus } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -38,10 +38,15 @@ export async function POST(req: Request) {
     const form = await req.formData().catch(() => null);
     if (form) data = Object.fromEntries(form.entries());
   }
-  const { hoaId, category, priority, title, bodyTemplate, isDefault, appliesToStatus, missingFields, isActive } = data;
+  const { hoaId, category, title, bodyTemplate, isDefault, requestStatus, missingFields, isActive } = data;
 
-  if (!hoaId || !category || !title || !bodyTemplate) {
+  if (!hoaId || !category || !title || !bodyTemplate || !requestStatus) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  const nextStatus = requestStatus as RequestStatus;
+  if (!Object.values(RequestStatus).includes(nextStatus)) {
+    return NextResponse.json({ error: "Invalid request status" }, { status: 400 });
   }
 
   const hoa = await prisma.hOA.findFirst({ where: { id: String(hoaId), userId: session.user.id } });
@@ -53,27 +58,62 @@ export async function POST(req: Request) {
     Array.isArray(missingFields) ? missingFields.map((v) => String(v).trim()).filter(Boolean) : typeof missingFields === "string" ? missingFields.split(",").map((v) => v.trim()).filter(Boolean) : [];
 
   const nextIsActive = isActive === undefined ? true : Boolean(isActive);
+  const wantsDefault = Boolean(isDefault) && nextIsActive;
+
   const policy = await prisma.$transaction(async (tx) => {
-    if (isDefault) {
+    if (wantsDefault) {
       await tx.policyTemplate.updateMany({
-        where: { hoaId: hoa.id, category: category as RequestCategory, appliesToStatus: appliesToStatus ? (appliesToStatus as RequestStatus) : null },
+        where: { hoaId: hoa.id, category: category as RequestCategory, requestStatus: nextStatus },
         data: { isDefault: false },
       });
     }
 
-    return tx.policyTemplate.create({
+    const created = await tx.policyTemplate.create({
       data: {
         hoaId: hoa.id,
         category: category as RequestCategory,
-        priority: priority ? (priority as RequestPriority) : null,
+        requestStatus: nextStatus,
         title: String(title),
         bodyTemplate: String(bodyTemplate),
-        isDefault: Boolean(isDefault) && nextIsActive,
+        isDefault: wantsDefault,
         isActive: nextIsActive,
-        appliesToStatus: appliesToStatus ? (appliesToStatus as RequestStatus) : null,
         missingFields: parsedMissing,
       },
     });
+
+    await tx.auditLog.createMany({
+      data: [
+        {
+          hoaId: hoa.id,
+          userId: session.user.id,
+          action: AuditAction.TEMPLATE_CREATED,
+          metadata: { templateId: created.id, category, requestStatus: nextStatus, isActive: nextIsActive },
+        },
+        wantsDefault
+          ? {
+              hoaId: hoa.id,
+              userId: session.user.id,
+              action: AuditAction.TEMPLATE_SET_AS_DEFAULT,
+              metadata: { templateId: created.id, category, requestStatus: nextStatus },
+            }
+          : null,
+        nextIsActive
+          ? {
+              hoaId: hoa.id,
+              userId: session.user.id,
+              action: AuditAction.TEMPLATE_ACTIVATED,
+              metadata: { templateId: created.id },
+            }
+          : {
+              hoaId: hoa.id,
+              userId: session.user.id,
+              action: AuditAction.TEMPLATE_DEACTIVATED,
+              metadata: { templateId: created.id },
+            },
+      ].filter(Boolean) as Parameters<typeof tx.auditLog.createMany>[0]["data"],
+    });
+
+    return created;
   });
 
   if (!contentType.includes("application/json")) {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { RequestCategory, RequestPriority } from "@prisma/client";
+import { RequestCategory, RequestStatus } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { cn } from "@/lib/utils";
 
@@ -8,7 +8,7 @@ type Policy = {
   id: string;
   hoaId: string;
   category: RequestCategory;
-  priority: RequestPriority | null;
+  requestStatus: RequestStatus;
   title: string;
   bodyTemplate: string;
   isDefault: boolean;
@@ -53,7 +53,7 @@ export default async function PoliciesPage({}: PageProps) {
         <div>
           <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Policies</p>
           <h1 className="text-3xl font-semibold text-slate-900">Policy templates</h1>
-          <p className="text-sm text-slate-600">Templates feed the built-in request engine. Keep one per category/priority.</p>
+          <p className="text-sm text-slate-600">Templates govern approved language per category and request status.</p>
         </div>
         <Link href="/app/policies/new" className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm">
           New template
@@ -73,7 +73,7 @@ export default async function PoliciesPage({}: PageProps) {
                   <th className="px-3 py-2">Name</th>
                   <th className="px-3 py-2">HOA</th>
                   <th className="px-3 py-2">Category</th>
-                  <th className="px-3 py-2">Priority</th>
+                  <th className="px-3 py-2">Request Status</th>
                   <th className="px-3 py-2">Default</th>
                   <th className="px-3 py-2">Template</th>
                   <th className="px-3 py-2">Updated</th>
@@ -94,15 +94,8 @@ export default async function PoliciesPage({}: PageProps) {
                       </span>
                     </td>
                     <td className="px-3 py-3">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2 py-0.5 text-xs font-semibold",
-                          policy.priority === RequestPriority.URGENT || policy.priority === RequestPriority.HIGH
-                            ? "bg-red-100 text-red-800"
-                            : "bg-slate-100 text-slate-700",
-                        )}
-                      >
-                        {policy.priority ?? "Any"}
+                      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
+                        {policy.requestStatus}
                       </span>
                     </td>
                     <td className="px-3 py-3 text-slate-700">

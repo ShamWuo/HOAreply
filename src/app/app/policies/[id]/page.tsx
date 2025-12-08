@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { RequestCategory, RequestPriority } from "@prisma/client";
+import { RequestCategory, RequestStatus } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
 
 type Policy = {
   id: string;
   hoaId: string;
   category: RequestCategory;
-  priority: RequestPriority | null;
+  requestStatus: RequestStatus;
   title: string;
   bodyTemplate: string;
   isDefault: boolean;
@@ -74,24 +74,13 @@ export default async function PolicyPage({ params }: PageProps) {
         <form action={isNew ? "/api/policies" : `/api/policies/${id}`} method="post" className="space-y-4">
           {!isNew ? <input type="hidden" name="_method" value="PUT" /> : null}
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="space-y-1 text-sm text-slate-700">
-              <span>HOA</span>
-              <select
-                name="hoaId"
-                defaultValue={policy?.hoaId ?? ""}
-                required
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
-              >
-                <option value="" disabled>
-                  Select HOA
-                </option>
-                {hoas.map((hoa) => (
-                  <option key={hoa.id} value={hoa.id}>
-                    {hoa.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <input type="hidden" name="hoaId" value={policy?.hoaId ?? hoas[0]?.id ?? ""} />
+            <div className="space-y-1 text-sm text-slate-700">
+              <span className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-500">HOA</span>
+              <div className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                {policy ? hoas.find((h) => h.id === policy.hoaId)?.name ?? "" : hoas[0]?.name ?? "Select HOA"}
+              </div>
+            </div>
             <label className="space-y-1 text-sm text-slate-700">
               <span>Title</span>
               <input
@@ -118,16 +107,16 @@ export default async function PolicyPage({ params }: PageProps) {
               </select>
             </label>
             <label className="space-y-1 text-sm text-slate-700">
-              <span>Priority</span>
+              <span>Request Status</span>
               <select
-                name="priority"
-                defaultValue={policy?.priority ?? ""}
+                name="requestStatus"
+                defaultValue={policy?.requestStatus ?? RequestStatus.OPEN}
+                required
                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
               >
-                <option value="">Any</option>
-                {Object.values(RequestPriority).map((p) => (
-                  <option key={p} value={p}>
-                    {p}
+                {Object.values(RequestStatus).map((status) => (
+                  <option key={status} value={status}>
+                    {status}
                   </option>
                 ))}
               </select>

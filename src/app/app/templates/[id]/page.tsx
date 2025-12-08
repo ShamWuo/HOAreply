@@ -7,7 +7,7 @@ type Template = {
   id: string;
   hoaId: string;
   category: RequestCategory;
-  appliesToStatus: RequestStatus | null;
+  requestStatus: RequestStatus;
   title: string;
   bodyTemplate: string;
   isDefault: boolean;
@@ -109,19 +109,20 @@ export default async function TemplateDetailPage({ params }: PageProps) {
               </select>
             </label>
             <label className="space-y-1 text-sm text-[var(--color-ink)]">
-              <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Applies when status is</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Request Status</span>
               <select
-                name="appliesToStatus"
-                defaultValue={template?.appliesToStatus ?? ""}
+                name="requestStatus"
+                defaultValue={template?.requestStatus ?? RequestStatus.OPEN}
+                required
                 className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm"
               >
-                <option value="">Any</option>
                 {Object.values(RequestStatus).map((status) => (
                   <option key={status} value={status}>
                     {status}
                   </option>
                 ))}
               </select>
+              <p className="text-[11px] text-[var(--color-muted)]">Default templates are suggested automatically when a request enters this status.</p>
             </label>
             <label className="flex items-center gap-2 pt-6 text-sm text-[var(--color-ink)]">
               <input type="checkbox" name="isDefault" defaultChecked={template?.isDefault ?? false} className="h-4 w-4" />
@@ -176,11 +177,6 @@ export default async function TemplateDetailPage({ params }: PageProps) {
                 action={`/api/policies/${id}`}
                 method="post"
                 className="inline-flex"
-                onSubmit={(event) => {
-                  if (!confirm("Delete this template? This cannot be undone.")) {
-                    event.preventDefault();
-                  }
-                }}
               >
                 <input type="hidden" name="_method" value="DELETE" />
                 <button

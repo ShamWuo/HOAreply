@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RequestCategory } from "@prisma/client";
+import { RequestCategory, RequestStatus } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { DeleteHoaButton } from "@/components/hoa/delete-hoa-button";
 import { auth } from "@/lib/auth";
@@ -86,7 +86,7 @@ export default async function SettingsPage() {
                     </div>
                     <div className="rounded-lg bg-[var(--color-surface)] px-3 py-2">
                       <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--color-muted)]">Default templates</p>
-                      <p className="text-base font-semibold">{Object.keys(hoa.defaults).length || 0} set</p>
+                      <p className="text-base font-semibold">{Object.values(hoa.defaults).reduce((sum, byStatus) => sum + Object.keys(byStatus ?? {}).length, 0)}</p>
                     </div>
                   </div>
 
@@ -138,31 +138,34 @@ export default async function SettingsPage() {
 
                 <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {Object.values(RequestCategory).map((category) => {
-                    const def = hoa.defaults[category];
+                    const byStatus = hoa.defaults[category] ?? {};
                     return (
                       <div key={`${hoa.id}-${category}`} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3">
                         <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--color-muted)]">{humanize(category)}</p>
-                        <p className="text-sm font-semibold text-[var(--color-ink)]">{def ? def.title : "No default template"}</p>
-                        <p className="text-xs text-[var(--color-muted)]">
-                          {def?.priority ? `Priority ${humanize(def.priority)}` : "Any priority"}
-                          {def?.updatedAt ? ` · Updated ${formatDate(def.updatedAt)}` : null}
-                        </p>
-                        <div className="mt-2 flex gap-2">
-                          {def?.templateId ? (
-                            <Link
-                              href={`/app/templates/${def.templateId}`}
-                              className="text-xs font-semibold text-[var(--color-ink)] hover:underline"
-                            >
-                              Open template
-                            </Link>
-                          ) : (
-                            <Link
-                              href="/app/templates/new"
-                              className="text-xs font-semibold text-[var(--color-ink)] hover:underline"
-                            >
-                              Set default
-                            </Link>
-                          )}
+                        <div className="mt-2 space-y-1 text-sm text-[var(--color-ink)]">
+                          {Object.values(RequestStatus).map((status) => {
+                            const def = byStatus[status];
+                            return (
+                              <div key={`${hoa.id}-${category}-${status}`} className="flex items-center justify-between gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2">
+                                <div>
+                                  <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--color-muted)]">{humanize(status)}</p>
+                                  <p className="font-semibold text-[var(--color-ink)]">{def ? def.title : "No default template"}</p>
+                                  <p className="text-[11px] text-[var(--color-muted)]">{def?.updatedAt ? `Updated ${formatDate(def.updatedAt)}` : "Not set"}</p>
+                                </div>
+                                <div className="flex flex-col items-end gap-1">
+                                  {def?.templateId ? (
+                                    <Link href={`/app/templates/${def.templateId}`} className="text-xs font-semibold text-[var(--color-ink)] hover:underline">
+                                      Open template
+                                    </Link>
+                                  ) : (
+                                    <Link href="/app/templates/new" className="text-xs font-semibold text-[var(--color-ink)] hover:underline">
+                                      Set default
+                                    </Link>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     );

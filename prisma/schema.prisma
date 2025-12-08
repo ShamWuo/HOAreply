@@ -183,12 +183,11 @@ model PolicyTemplate {
   id               String            @id @default(cuid())
   hoaId            String
   category         RequestCategory
-  priority         RequestPriority?
+  requestStatus    RequestStatus     @default(OPEN)
   title            String
   bodyTemplate     String
   isDefault        Boolean           @default(false)
   isActive         Boolean           @default(true)
-  appliesToStatus  RequestStatus?
   missingFields    String[]          @default([])
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
@@ -197,7 +196,7 @@ model PolicyTemplate {
   drafts           ReplyDraft[]
 
   @@index([hoaId, category])
-  @@index([hoaId, category, priority])
+  @@index([hoaId, category, requestStatus])
 }
 
 model ReplyDraft {
@@ -206,6 +205,7 @@ model ReplyDraft {
   templateId       String?
   messageId        String?
   content          String
+  source           DraftSource    @default(MANUAL)
   createdAt        DateTime       @default(now())
   createdBy        DraftAuthor    @default(ai)
   approvedAt       DateTime?
@@ -361,9 +361,21 @@ enum AuditAction {
   APPROVED
   SENT
   VALIDATION
+  TEMPLATE_CREATED
+  TEMPLATE_UPDATED
+  TEMPLATE_ACTIVATED
+  TEMPLATE_DEACTIVATED
+  TEMPLATE_SET_AS_DEFAULT
+  TEMPLATE_APPLIED
 }
 
 enum DraftAuthor {
   ai
   user
+}
+
+enum DraftSource {
+  TEMPLATE
+  MANUAL
+  MODIFIED_FROM_TEMPLATE
 }

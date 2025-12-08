@@ -28,7 +28,7 @@ type RequestDetail = {
       receivedAt: string;
     }>;
   } | null;
-  drafts: Array<{ id: string; content: string; createdAt: string; approvedAt: string | null }>;
+  drafts: Array<{ id: string; content: string; createdAt: string; approvedAt: string | null; templateId: string | null; source: "TEMPLATE" | "MANUAL" | "MODIFIED_FROM_TEMPLATE" }>;
   auditLogs: Array<{
     id: string;
     action: string;
@@ -56,6 +56,17 @@ async function fetchRequest(id: string) {
   }
   const data = (await res.json()) as { request: RequestDetail };
   return data.request;
+}
+
+async function fetchTemplates(): Promise<{ policies: Array<{ id: string; hoaId: string; category: RequestCategory; requestStatus: RequestStatus; title: string; bodyTemplate: string; isActive: boolean; isDefault: boolean }>; }> {
+  const baseUrl = process.env.APP_BASE_URL ?? "http://localhost:3000";
+  const res = await fetch(`${baseUrl}/api/policies`, {
+    cache: "no-store",
+    headers: { cookie: await cookieHeader() },
+  });
+  if (!res.ok) throw new Error("Failed to load templates");
+  const data = await res.json();
+  return { policies: data.policies };
 }
 
 function formatSla(slaDueAt: string | null) {
@@ -114,6 +125,10 @@ type PageProps = {
 export default async function RequestDetailPage({ params }: PageProps) {
   const { id } = params ? await params : { id: "" };
   const request = await fetchRequest(id);
+  const { policies } = await fetchTemplates();
+  const matchingTemplates = policies
+    .filter((tpl) => tpl.hoaId === request.hoa.id && tpl.category === request.category && tpl.requestStatus === request.status && tpl.isActive)
+    .sort((a, b) => Number(b.isDefault) - Number(a.isDefault));
   const draft = request.drafts[0];
   const hasDraft = Boolean(draft?.content?.trim());
   const isResidentRequest = request.kind === RequestKind.RESIDENT && Boolean(request.resident?.email);
@@ -235,6 +250,14 @@ export default async function RequestDetailPage({ params }: PageProps) {
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Draft</p>
             {!hasDraft ? <span className="text-[11px] text-[var(--color-muted)]">Optional</span> : null}
           </div>
+
+          <TemplatePicker
+            requestId={request.id}
+            templates={matchingTemplates}
+            hasDraft={hasDraft}
+            currentSource={draft?.source}
+          />
+
           <form action={`/api/requests/${request.id}/draft`} method="post" className="space-y-3">
             <textarea
               name="content"
@@ -250,6 +273,13 @@ export default async function RequestDetailPage({ params }: PageProps) {
               Save Draft
             </button>
           </form>
+
+          {draft?.source === "TEMPLATE" ? (
+            <p className="text-[11px] text-[var(--color-muted)]">Draft is based on a template. Review before sending.</p>
+          ) : null}
+          {draft?.source === "MODIFIED_FROM_TEMPLATE" ? (
+            <p className="text-[11px] font-semibold text-amber-700">Modified from template. Ensure wording still matches approved language.</p>
+          ) : null}
         </GlassPanel>
 
         <GlassPanel className="space-y-3 p-6">
@@ -373,5 +403,49 @@ function ActionGroup({
         </button>
       </form>
     </div>
+  );
+}
+
+function TemplatePicker({
+  requestId,
+  templates,
+  hasDraft,
+  currentSource,
+}: {
+  requestId: string;
+  templates: Array<{ id: string; title: string; isDefault: boolean }>;
+  hasDraft: boolean;
+  currentSource?: string;
+}) {
+  if (!templates.length) {
+    return (
+      <div className="rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-muted)]">
+        No active templates for this category and status.
+      </div>
+    );
+  }
+
+  return (
+    <form action={`/api/requests/${requestId}/draft`} method="post" className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Apply template</p>
+        {currentSource === "TEMPLATE" ? <span className="text-[11px] text-[var(--color-muted)]">Applied</span> : null}
+      </div>
+      <select name="applyTemplateId" className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm">
+        {templates.map((tpl) => (
+          <option key={tpl.id} value={tpl.id}>
+            {tpl.title} {tpl.isDefault ? "(Default)" : ""}
+          </option>
+        ))}
+      </select>
+      <p className="text-[11px] text-[var(--color-muted)]">Applying replaces the current draft with approved language. Drafts are never auto-sent.</p>
+      <button
+        type="submit"
+        className="inline-flex items-center rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
+      >
+        Apply Template
+      </button>
+      {hasDraft ? <p className="text-[11px] text-[var(--color-muted)]">Current draft will be replaced.</p> : null}
+    </form>
   );
 }

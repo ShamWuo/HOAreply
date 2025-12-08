@@ -1,4 +1,4 @@
-import { RequestCategory, RequestPriority, RequestStatus } from "@prisma/client";
+import { RequestCategory, RequestStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { INBOX_STATUSES } from "@/lib/queries/inbox";
 
@@ -6,7 +6,7 @@ export type SettingsTemplateDefault = {
   templateId: string | null;
   title: string;
   category: RequestCategory;
-  priority: RequestPriority | null;
+  requestStatus: RequestStatus;
   updatedAt: string | null;
 };
 
@@ -24,7 +24,7 @@ export type SettingsHoa = {
     requests: number;
     openRequests: number;
   };
-  defaults: Partial<Record<RequestCategory, SettingsTemplateDefault>>;
+  defaults: Partial<Record<RequestCategory, Partial<Record<RequestStatus, SettingsTemplateDefault>>>>;
 };
 
 export type SettingsOverview = {
@@ -68,7 +68,7 @@ export async function getSettingsOverview(userId: string): Promise<SettingsOverv
         id: true,
         hoaId: true,
         category: true,
-        priority: true,
+        requestStatus: true,
         title: true,
         updatedAt: true,
       },
@@ -89,18 +89,20 @@ export async function getSettingsOverview(userId: string): Promise<SettingsOverv
     }
   });
 
-  const defaultsByHoa = new Map<string, Partial<Record<RequestCategory, SettingsTemplateDefault>>>();
+  const defaultsByHoa = new Map<string, Partial<Record<RequestCategory, Partial<Record<RequestStatus, SettingsTemplateDefault>>>>>();
   defaultTemplates.forEach((tpl) => {
     const current = defaultsByHoa.get(tpl.hoaId) ?? {};
-    if (!current[tpl.category]) {
-      current[tpl.category] = {
+    const categoryDefaults = current[tpl.category] ?? {};
+    if (!categoryDefaults[tpl.requestStatus]) {
+      categoryDefaults[tpl.requestStatus] = {
         templateId: tpl.id,
         title: tpl.title,
         category: tpl.category,
-        priority: tpl.priority,
+        requestStatus: tpl.requestStatus,
         updatedAt: tpl.updatedAt?.toISOString() ?? null,
       };
     }
+    current[tpl.category] = categoryDefaults;
     defaultsByHoa.set(tpl.hoaId, current);
   });
 

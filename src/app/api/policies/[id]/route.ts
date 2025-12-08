@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { RequestCategory, RequestPriority, RequestStatus } from "@prisma/client";
+import { AuditAction, RequestCategory, RequestStatus } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -40,20 +40,23 @@ export async function PUT(req: Request, context: Context) {
   }
 
   const data = await req.json().catch(() => ({}));
-  const { category, priority, title, bodyTemplate, isDefault, appliesToStatus, missingFields, isActive } = data as Record<string, unknown>;
+  const { category, title, bodyTemplate, isDefault, requestStatus, missingFields, isActive } = data as Record<string, unknown>;
 
   const parsedMissing =
     Array.isArray(missingFields) ? missingFields.map((v) => String(v).trim()).filter(Boolean) : typeof missingFields === "string" ? missingFields.split(",").map((v) => v.trim()).filter(Boolean) : [];
 
   const nextCategory = (category as RequestCategory) || existing.category;
-  const nextStatus = appliesToStatus ? (appliesToStatus as RequestStatus) : existing.appliesToStatus ?? null;
+  const nextStatus = (requestStatus as RequestStatus) || existing.requestStatus;
+  if (!Object.values(RequestStatus).includes(nextStatus)) {
+    return NextResponse.json({ error: "Invalid request status" }, { status: 400 });
+  }
   const nextIsActive = isActive === undefined ? existing.isActive : Boolean(isActive);
   const nextIsDefault = nextIsActive ? (isDefault === undefined ? existing.isDefault : Boolean(isDefault)) : false;
 
   const updated = await prisma.$transaction(async (tx) => {
     if (nextIsDefault) {
       await tx.policyTemplate.updateMany({
-        where: { hoaId: existing.hoaId, category: nextCategory, appliesToStatus: nextStatus },
+        where: { hoaId: existing.hoaId, category: nextCategory, requestStatus: nextStatus },
         data: { isDefault: false },
       });
     }
@@ -62,15 +65,41 @@ export async function PUT(req: Request, context: Context) {
       where: { id },
       data: {
         category: nextCategory,
-        priority: priority ? (priority as RequestPriority) : null,
         title: title ? String(title) : existing.title,
         bodyTemplate: bodyTemplate ? String(bodyTemplate) : existing.bodyTemplate,
         isDefault: nextIsDefault,
         isActive: nextIsActive,
-        appliesToStatus: nextStatus,
-        missingFields: parsedMissing.length ? parsedMissing : [],
+        requestStatus: nextStatus,
+        missingFields: missingFields !== undefined ? parsedMissing : existing.missingFields,
       },
     });
+  });
+
+  await prisma.auditLog.createMany({
+    data: [
+      {
+        hoaId: existing.hoaId,
+        userId: session.user.id,
+        action: AuditAction.TEMPLATE_UPDATED,
+        metadata: { templateId: updated.id, category: updated.category, requestStatus: updated.requestStatus },
+      },
+      isActiveChanged(existing.isActive, nextIsActive)
+        ? {
+            hoaId: existing.hoaId,
+            userId: session.user.id,
+            action: nextIsActive ? AuditAction.TEMPLATE_ACTIVATED : AuditAction.TEMPLATE_DEACTIVATED,
+            metadata: { templateId: updated.id },
+          }
+        : null,
+      nextIsDefault
+        ? {
+            hoaId: existing.hoaId,
+            userId: session.user.id,
+            action: AuditAction.TEMPLATE_SET_AS_DEFAULT,
+            metadata: { templateId: updated.id, category: updated.category, requestStatus: updated.requestStatus },
+          }
+        : null,
+    ].filter(Boolean) as Parameters<typeof prisma.auditLog.createMany>[0]["data"],
   });
 
   const contentType = req.headers.get("content-type") ?? "";
@@ -97,8 +126,21 @@ export async function DELETE(_: Request, context: Context) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  await prisma.policyTemplate.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+  const updated = await prisma.policyTemplate.update({
+    where: { id },
+    data: { isActive: false, isDefault: false },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      hoaId: existing.hoaId,
+      userId: session.user.id,
+      action: AuditAction.TEMPLATE_DEACTIVATED,
+      metadata: { templateId: updated.id },
+    },
+  });
+
+  return NextResponse.json({ ok: true, policy: updated });
 }
 
 export async function POST(req: Request, ctx: Context) {
@@ -117,4 +159,8 @@ export async function POST(req: Request, ctx: Context) {
     }
   }
   return PUT(req, ctx);
+}
+
+function isActiveChanged(prev: boolean, next: boolean) {
+  return prev !== next;
 }
