@@ -59,10 +59,8 @@ export async function GET(request: NextRequest) {
     prisma.request.findMany({
       where,
       orderBy: [
-        { status: "asc" },
-        { priority: "desc" },
-        { slaDueAt: "asc" },
         { updatedAt: "desc" },
+        { createdAt: "desc" },
       ],
       take: limit,
       include: {

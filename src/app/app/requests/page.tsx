@@ -129,7 +129,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
       <header className="space-y-1">
         <p className="text-sm font-semibold text-slate-700">Requests</p>
         <h1 className="text-3xl font-semibold text-slate-900">Requests</h1>
-        <p className="text-sm text-slate-600">All resident requests, past and present.</p>
+        <p className="text-sm text-slate-600">System of record: everything that has happened or is happening.</p>
         <p className="text-xs text-slate-500">{total} request{total === 1 ? "" : "s"} found</p>
       </header>
 

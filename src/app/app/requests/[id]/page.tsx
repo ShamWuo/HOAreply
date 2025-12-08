@@ -102,7 +102,7 @@ function deriveNextStep(request: RequestDetail, isResidentRequest: boolean, hasM
   return "Review";
 }
 
-function deriveIssue(request: RequestDetail) {
+function deriveRequestTitle(request: RequestDetail) {
   return (request.summary ?? request.subject ?? "Resident request").split("\n")[0].trim();
 }
 
@@ -119,7 +119,7 @@ export default async function RequestDetailPage({ params }: PageProps) {
   const isResidentRequest = request.kind === RequestKind.RESIDENT && Boolean(request.resident?.email);
   const hasMissingInfo = Boolean(request.missingInfo?.length);
   const missingInfoLines = friendlyMissingInfo(request.missingInfo);
-  const issueLine = deriveIssue(request);
+  const requestLine = deriveRequestTitle(request);
   const contextLine = [request.resident?.name || request.resident?.email, request.hoa.name].filter(Boolean).join(" · ") || "Resident context unavailable";
   const riskLevel = deriveRisk(request);
   const suggestedNext = deriveNextStep(request, isResidentRequest, hasMissingInfo, hasDraft);
@@ -130,7 +130,7 @@ export default async function RequestDetailPage({ params }: PageProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">Request</p>
-          <h1 className="text-3xl font-semibold text-slate-900">{issueLine || "Resident request"}</h1>
+          <h1 className="text-3xl font-semibold text-slate-900">{requestLine || "Resident request"}</h1>
           <p className="text-sm text-slate-600">
             {request.resident?.name ?? "Unknown resident"}
             {request.resident?.email ? ` · ${request.resident.email}` : ""}
@@ -151,8 +151,8 @@ export default async function RequestDetailPage({ params }: PageProps) {
           </div>
           <div className="space-y-3 text-sm text-[var(--color-ink)]">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Issue</p>
-              <p className="text-base font-semibold text-[var(--color-ink)] leading-relaxed">{issueLine || "Unspecified issue"}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Request</p>
+              <p className="text-base font-semibold text-[var(--color-ink)] leading-relaxed">{requestLine || "Resident request"}</p>
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Context</p>
@@ -162,6 +162,7 @@ export default async function RequestDetailPage({ params }: PageProps) {
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Risk Level</p>
                 <p>{riskLevel}</p>
+                <p className="text-[11px] text-[var(--color-muted)]">Flagged due to language patterns. Informational only. Not legal advice.</p>
               </div>
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Suggested Next Step</p>

@@ -6,26 +6,12 @@ import { auth } from "@/lib/auth";
 import { InboxRefreshButton } from "@/components/inbox/refresh-button";
 import { getInboxItemsForUser } from "@/lib/queries/inbox";
 
-function pill(priority: RequestPriority) {
-  if (priority === RequestPriority.URGENT) return "border-rose-200 text-rose-800 bg-rose-50";
-  if (priority === RequestPriority.HIGH) return "border-amber-200 text-amber-800 bg-amber-50";
-  return "border-slate-200 text-slate-700 bg-white";
-}
-
-function friendlyLabel(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
 function summarizeLine(summary: string | null | undefined, fallback: string | null | undefined) {
   const raw = (summary || fallback || "").trim();
-  if (!raw) return "Pending summary";
+  if (!raw) return "Needs review";
   const firstLine = raw.split(/\r?\n/)[0];
   const withoutLabel = firstLine.replace(/^(issue|context|risk level|suggested next step)\s*:\s*/i, "");
-  return withoutLabel.endsWith(".") ? withoutLabel : `${withoutLabel}`;
+  return withoutLabel.length > 120 ? `${withoutLabel.slice(0, 117)}…` : withoutLabel;
 }
 
 const STATUS_LABEL: Record<RequestStatus, string> = {
@@ -79,7 +65,7 @@ export default async function InboxPage() {
         <header className="space-y-1">
           <p className="text-sm font-semibold text-slate-700">Inbox</p>
           <h1 className="text-3xl font-semibold text-slate-900">Needs your attention</h1>
-          <p className="text-sm text-slate-600">Focused triage. No clutter.</p>
+          <p className="text-sm text-slate-600">Items here require a decision or action to move forward.</p>
         </header>
         <InboxRefreshButton />
       </div>
@@ -101,15 +87,12 @@ export default async function InboxPage() {
                     {STATUS_LABEL[item.status]}
                   </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-muted)]">
-                  <span className="font-semibold text-[var(--color-ink)]">{item.residentDisplayName || "Unknown resident"}</span>
-                  <span className="inline-flex items-center gap-2 text-[12px] font-semibold text-[var(--color-ink)]">
-                    <span className="inline-flex items-center rounded-full border border-[var(--color-border)] px-2 py-1 text-[12px] font-semibold text-[var(--color-ink)]">
-                      {friendlyLabel(item.category)}
-                    </span>
-                    <span className={cn("inline-flex items-center rounded-full border px-2 py-1 text-[12px] font-semibold", pill(item.priority))}>{friendlyLabel(item.priority)}</span>
-                    <span className="text-[12px] font-semibold text-[var(--color-ink)]">{formatSla(item.slaDueAt)}</span>
+                <div className="flex flex-wrap items-center gap-2 text-[12px] font-semibold text-[var(--color-ink)]">
+                  <span>{item.residentDisplayName || "Unknown resident"}</span>
+                  <span className="inline-flex items-center rounded-full border border-[var(--color-border)] px-2 py-1 text-[11px] font-semibold text-[var(--color-ink)]">
+                    {item.reason}
                   </span>
+                  {item.slaDueAt ? <span className="text-[12px] font-semibold text-[var(--color-muted)]">{formatSla(item.slaDueAt)}</span> : null}
                 </div>
               </GlassPanel>
             </Link>

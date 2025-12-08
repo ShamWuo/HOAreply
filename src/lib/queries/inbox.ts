@@ -17,6 +17,7 @@ export type InboxItem = {
   priority: RequestPriority;
   status: RequestStatus;
   slaDueAt: string | null;
+  reason: string;
 };
 
 export async function getInboxItemsForUser(userId: string, opts?: { limit?: number }) {
@@ -33,8 +34,13 @@ export async function getInboxItemsForUser(userId: string, opts?: { limit?: numb
     hoaId: { in: hoaIds },
     kind: RequestKind.RESIDENT,
     OR: [
-      { status: { in: INBOX_STATUSES } },
-      { slaDueAt: { lte: soon } },
+      { status: RequestStatus.NEEDS_INFO },
+      {
+        AND: [
+          { status: { in: [RequestStatus.OPEN, RequestStatus.IN_PROGRESS] } },
+          { slaDueAt: { not: null, lte: soon } },
+        ],
+      },
     ],
   };
 
@@ -62,6 +68,14 @@ export async function getInboxItemsForUser(userId: string, opts?: { limit?: numb
     priority: req.priority,
     status: req.status,
     slaDueAt: req.slaDueAt?.toISOString() ?? null,
+    reason:
+      req.status === RequestStatus.NEEDS_INFO
+        ? "Waiting on info"
+        : req.slaDueAt
+          ? req.slaDueAt.getTime() < Date.now()
+            ? "SLA overdue"
+            : "SLA at risk"
+          : "Action required",
   }));
 
   return { items, total };

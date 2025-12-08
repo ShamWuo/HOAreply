@@ -47,7 +47,7 @@ const DEFAULT_CATEGORY_TEMPLATES: Record<RequestCategory, string> = {
   [RequestCategory.GENERAL]:
     "Hi {{resident_name}},\n\nThanks for your message. We will review and respond soon.\n\nThanks,\n{{manager_name}}",
   [RequestCategory.BOARD]:
-    "Hi {{resident_name}},\n\nWe received your board-related request and will route it to the appropriate board member.\n\nThanks,\n{{manager_name}}",
+     "Hi {{resident_name}},\n\nWe received your board-related request and are reviewing it.\n\nThanks,\n{{manager_name}}",
   [RequestCategory.OTHER]:
     "Hi {{resident_name}},\n\nWe received your message and will review it shortly.\n\nThanks,\n{{manager_name}}",
 };

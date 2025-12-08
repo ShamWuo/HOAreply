@@ -73,14 +73,8 @@ export default function Home() {
             Turn resident emails into tracked requests with clear status, ownership, and approved response language.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Link
-              href="/connect/gmail"
-              className="rounded-md border border-slate-300 bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-            >
-              Connect Gmail
-            </Link>
             <Link href="#product" className="text-sm font-semibold text-slate-800 hover:text-slate-900">
-              View example inbox
+              View product
             </Link>
           </div>
         </section>
