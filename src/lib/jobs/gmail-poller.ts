@@ -184,8 +184,12 @@ export async function runUserInitiatedPoll(userId: string): Promise<PollJobResul
 
     for (const account of accounts) {
       try {
-        const processed = await pollGmailAccount(account.id);
-        summaries.push({ accountId: account.id, processed });
+        const result = await pollGmailAccountWithLock(account.id);
+        if (result.skipped) {
+          summaries.push({ accountId: account.id, processed: 0, error: result.reason });
+        } else {
+          summaries.push({ accountId: account.id, processed: result.processed });
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown poll error";
         logError("poll-gmail user-triggered account error", { accountId: account.id, userId, error: message });
@@ -211,7 +215,7 @@ export async function pollAllGmailAccounts() {
   logInfo("poll-gmail start", { accounts: accounts.length });
   const summaries: PollSummary[] = [];
 
-  for (const account of accounts) {
+    for (const account of accounts) {
     try {
       addBreadcrumb({
         category: "poll-gmail",
@@ -219,13 +223,19 @@ export async function pollAllGmailAccounts() {
         level: "info",
         data: { accountId: account.id, email: account.email },
       });
-      const processed = await processAccount(account.id);
-      logInfo("poll-gmail processed account", { accountId: account.id, processed });
+      const result = await pollGmailAccountWithLock(account.id);
+      if (result.skipped) {
+        logWarn("poll-gmail account skipped - lock held", { accountId: account.id });
+        summaries.push({ accountId: account.id, processed: 0, error: result.reason });
+        continue;
+      }
+
+      logInfo("poll-gmail processed account", { accountId: account.id, processed: result.processed });
       await prisma.gmailAccount.update({
         where: { id: account.id },
         data: { lastPolledAt: new Date(), lastPollError: null },
       });
-      summaries.push({ accountId: account.id, processed });
+      summaries.push({ accountId: account.id, processed: result.processed });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown poll error";
       logError("poll-gmail error", { accountId: account.id, error: message });
@@ -272,6 +282,23 @@ export async function pollGmailAccount(accountId: string) {
       });
     });
     throw error;
+  }
+}
+
+export async function pollGmailAccountWithLock(accountId: string) {
+  const lockId = `${POLL_JOB_ID}-account-${accountId}`;
+  const lockAcquired = await acquireJobLock(lockId, POLL_LOCK_WINDOW_MS);
+
+  if (!lockAcquired) {
+    logWarn("poll-gmail skipped - account lock held", { accountId: accountId });
+    return { skipped: true as const, processed: 0, reason: "Poll already running" };
+  }
+
+  try {
+    const processed = await pollGmailAccount(accountId);
+    return { skipped: false as const, processed };
+  } finally {
+    await releaseJobLock(lockId);
   }
 }
 

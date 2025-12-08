@@ -48,10 +48,8 @@ const DEFAULT_CATEGORY_TEMPLATES: Record<RequestCategory, string> = {
     "Hi {{resident_name}},\n\nThanks for your message. We will review and respond soon.\n\nThanks,\n{{manager_name}}",
   [RequestCategory.BOARD]:
     "Hi {{resident_name}},\n\nWe received your board-related request and will route it to the appropriate board member.\n\nThanks,\n{{manager_name}}",
-  [RequestCategory.LEGAL]:
-    "Hi {{resident_name}},\n\nWe received your note. We will review and follow up.\n\nThanks,\n{{manager_name}}",
-  [RequestCategory.SPAM]:
-    "",
+  [RequestCategory.OTHER]:
+    "Hi {{resident_name}},\n\nWe received your message and will review it shortly.\n\nThanks,\n{{manager_name}}",
 };
 
 function normalizeText(subject?: string, body?: string | null) {
@@ -80,8 +78,8 @@ export function classifyEmail(
   const looksLegal = /liability|legal|counsel|attorney|lawsuit|claim|demand/i.test(text);
 
   const category: RequestCategory = (() => {
-    if (looksSalesy) return RequestCategory.SPAM;
-    if (looksLegal) return RequestCategory.LEGAL;
+    if (looksSalesy) return RequestCategory.OTHER;
+    if (looksLegal) return RequestCategory.OTHER;
     if (text.includes("board")) return RequestCategory.BOARD;
     if (text.includes("violation") || text.includes("notice") || text.includes("warning")) return RequestCategory.VIOLATION;
     if (text.includes("maintenance") || text.includes("repair") || text.includes("leak")) return RequestCategory.MAINTENANCE;
@@ -106,11 +104,11 @@ export function classifyEmail(
   const hasLegalRisk = looksLegal;
 
   const kind: RequestKind = (() => {
-    if (!hasResident && looksSalesy) return RequestKind.SALES_SPAM;
-    if (!hasResident && looksVendor) return RequestKind.VENDOR_INQUIRY;
-    if (!hasResident) return RequestKind.OTHER_NON_REQUEST;
-    if (category === RequestCategory.SPAM) return RequestKind.SALES_SPAM;
-    return RequestKind.RESIDENT_REQUEST;
+    if (!hasResident && looksSalesy) return RequestKind.NEWSLETTER;
+    if (!hasResident && looksVendor) return RequestKind.VENDOR;
+    if (!hasResident) return RequestKind.UNKNOWN;
+    if (category === RequestCategory.OTHER) return looksSalesy ? RequestKind.NEWSLETTER : RequestKind.UNKNOWN;
+    return RequestKind.RESIDENT;
   })();
 
   return { category, priority, missingInfo, hasLegalRisk, kind };
@@ -122,29 +120,25 @@ function computeSla(priority: RequestPriority): Date | null {
 }
 
 function applyRouting(classification: ClassificationResult): RoutingDecision {
-  if (classification.kind !== RequestKind.RESIDENT_REQUEST) {
+  if (classification.kind !== RequestKind.RESIDENT) {
     return { status: RequestStatus.CLOSED, slaDueAt: null };
   }
   if (classification.missingInfo.length > 0) {
     return { status: RequestStatus.NEEDS_INFO, slaDueAt: null };
   }
-  if (classification.category === RequestCategory.SPAM) {
-    return { status: RequestStatus.CLOSED, slaDueAt: null };
-  }
-  return { status: RequestStatus.AWAITING_REPLY, slaDueAt: computeSla(classification.priority) };
+  return { status: RequestStatus.OPEN, slaDueAt: computeSla(classification.priority) };
 }
 
 export function mapRequestStatusToThreadStatus(status: RequestStatus): ThreadStatus {
   switch (status) {
     case RequestStatus.NEEDS_INFO:
       return ThreadStatus.AWAITING_RESIDENT;
-    case RequestStatus.AWAITING_REPLY:
     case RequestStatus.IN_PROGRESS:
       return ThreadStatus.PENDING;
     case RequestStatus.RESOLVED:
     case RequestStatus.CLOSED:
       return ThreadStatus.RESOLVED;
-    case RequestStatus.NEW:
+    case RequestStatus.OPEN:
     default:
       return ThreadStatus.NEW;
   }
@@ -252,6 +246,7 @@ export async function runRequestPipeline(requestId: string) {
       slaDueAt: routing.slaDueAt ?? undefined,
       lastActionAt: new Date(),
       summary,
+      summaryUpdatedAt: new Date(),
     },
   });
 
@@ -344,7 +339,7 @@ export async function handleInboundRequest(params: {
   });
   const routing = applyRouting(classification);
 
-  if (classification.kind !== RequestKind.RESIDENT_REQUEST) {
+  if (classification.kind !== RequestKind.RESIDENT) {
     await prisma.threadClassificationHistory.create({
       data: {
         threadId: params.threadId,
@@ -406,6 +401,7 @@ export async function handleInboundRequest(params: {
       hasLegalRisk: classification.hasLegalRisk,
       kind: classification.kind,
       summary,
+      summaryUpdatedAt: new Date(),
     },
     create: {
       hoaId: params.hoaId,
@@ -421,6 +417,7 @@ export async function handleInboundRequest(params: {
       hasLegalRisk: classification.hasLegalRisk,
       kind: classification.kind,
       summary,
+      summaryUpdatedAt: new Date(),
     },
   });
 
@@ -504,9 +501,9 @@ export async function handleInboundRequest(params: {
 }
 
 function mapRequestKindToThreadKind(kind: RequestKind): ThreadKind {
-  if (kind === RequestKind.RESIDENT_REQUEST) return ThreadKind.resident;
-  if (kind === RequestKind.VENDOR_INQUIRY) return ThreadKind.vendor;
-  if (kind === RequestKind.SALES_SPAM) return ThreadKind.newsletter_spam;
+  if (kind === RequestKind.RESIDENT) return ThreadKind.resident;
+  if (kind === RequestKind.VENDOR) return ThreadKind.vendor;
+  if (kind === RequestKind.NEWSLETTER) return ThreadKind.newsletter_spam;
   return ThreadKind.unknown;
 }
 
@@ -521,17 +518,13 @@ function buildSummary(params: {
   hoaName: string;
 }) {
   const issue = (params.subject || "Resident request").trim();
-  const contextParts = [params.residentName ?? params.residentEmail ?? "Resident", params.hoaName].filter(Boolean);
-  if (params.missingInfo.length) {
-    const friendly = params.missingInfo.map((item) => (item.toLowerCase().includes("unit") ? "Unit number" : item.replaceAll("_", " ")));
-    contextParts.push(`Missing: ${friendly.join(", ")}`);
-  }
-  const risk = params.hasLegalRisk || params.category === RequestCategory.LEGAL
-    ? "Legal-Sensitive"
-    : params.category === RequestCategory.BOARD || params.category === RequestCategory.VIOLATION
-      ? "Policy-Sensitive"
-      : "Neutral";
-  const nextStep = params.missingInfo.length ? "Request info" : "Review";
+  const who = params.residentName ?? params.residentEmail ?? "Resident";
+  const needs = params.missingInfo.map((item) => (item.toLowerCase().includes("unit") ? "unit number" : item.replaceAll("_", " ")));
 
-  return `Issue:\n${issue}\n\nContext:\n${contextParts.join("; ") || "Resident context"}\n\nRisk Level:\n${risk}\n\nSuggested Next Step:\n${nextStep}`;
+  const firstSentence = `${who} asked about ${issue}.`;
+  const secondSentence = needs.length
+    ? `Waiting for ${needs.join(" and ")} to proceed.`
+    : "Ready for review.";
+
+  return `${firstSentence} ${secondSentence}`.trim();
 }

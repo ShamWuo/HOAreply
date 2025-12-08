@@ -46,12 +46,13 @@ model GmailAccount {
   accessToken  String
   refreshToken String
   expiryDate   DateTime
+  historyId    String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @default(now()) @updatedAt
   lastPolledAt DateTime?
   lastPollError String?
   threads      EmailThread[]
-  hoa          HOA           @relation(fields: [hoaId], references: [id], onDelete: Cascade)
+  hoa          HOA           @relation(fields: [hoaId], references: [id], onDelete: Restrict)
   pollRuns     PollRun[]
 }
 
@@ -71,7 +72,7 @@ model EmailThread {
   updatedAt      DateTime       @default(now()) @updatedAt
   messages       EmailMessage[]
   gmailAccount   GmailAccount?  @relation(fields: [gmailAccountId], references: [id])
-  hoa            HOA            @relation(fields: [hoaId], references: [id], onDelete: Cascade)
+  hoa            HOA            @relation(fields: [hoaId], references: [id], onDelete: Restrict)
   assignedToUser User?          @relation("ThreadAssignedToUser", fields: [assignedToUserId], references: [id])
   classifications ThreadClassificationHistory[]
   request        Request?
@@ -146,12 +147,13 @@ model Request {
   hoaId          String
   threadId       String           @unique
   subject        String
-  summary        String?
-  kind           RequestKind      @default(RESIDENT_REQUEST)
+  summary        String           @default("")
+  summaryUpdatedAt DateTime?      @default(now())
+  kind           RequestKind      @default(RESIDENT)
   residentId     String?
   category       RequestCategory
   priority       RequestPriority  @default(NORMAL)
-  status         RequestStatus    @default(NEW)
+  status         RequestStatus    @default(OPEN)
   assigneeUserId String?
   slaDueAt       DateTime?
   lastActionAt   DateTime         @default(now())
@@ -313,13 +315,12 @@ enum ThreadKind {
 }
 
 enum RequestCategory {
+  GENERAL
   MAINTENANCE
   VIOLATION
   BILLING
-  GENERAL
   BOARD
-  LEGAL
-  SPAM
+  OTHER
 }
 
 enum RequestPriority {
@@ -330,19 +331,18 @@ enum RequestPriority {
 }
 
 enum RequestStatus {
-  NEW
-  NEEDS_INFO
+  OPEN
   IN_PROGRESS
-  AWAITING_REPLY
+  NEEDS_INFO
   RESOLVED
   CLOSED
 }
 
 enum RequestKind {
-  RESIDENT_REQUEST
-  VENDOR_INQUIRY
-  SALES_SPAM
-  OTHER_NON_REQUEST
+  RESIDENT
+  VENDOR
+  NEWSLETTER
+  UNKNOWN
 }
 
 enum AuditAction {
@@ -352,6 +352,9 @@ enum AuditAction {
   DRAFT_GENERATED
   DRAFT_REGENERATED
   STATUS_CHANGED
+  PRIORITY_CHANGED
+  AI_SUMMARY_GENERATED
+  MESSAGE_SENT
   APPROVED
   SENT
   VALIDATION

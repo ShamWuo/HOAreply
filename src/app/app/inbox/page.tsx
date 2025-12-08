@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { addHours } from "date-fns";
-import { RequestKind, RequestPriority, RequestStatus } from "@prisma/client";
+import { RequestPriority, RequestStatus } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { cn } from "@/lib/utils";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { InboxRefreshButton } from "@/components/inbox/refresh-button";
+import { getInboxItemsForUser } from "@/lib/queries/inbox";
 
 function pill(priority: RequestPriority) {
   if (priority === RequestPriority.URGENT) return "border-rose-200 text-rose-800 bg-rose-50";
@@ -13,15 +12,32 @@ function pill(priority: RequestPriority) {
   return "border-slate-200 text-slate-700 bg-white";
 }
 
+function friendlyLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+const STATUS_LABEL: Record<RequestStatus, string> = {
+  [RequestStatus.OPEN]: "Open",
+  [RequestStatus.IN_PROGRESS]: "In progress",
+  [RequestStatus.NEEDS_INFO]: "Needs info",
+  [RequestStatus.RESOLVED]: "Resolved",
+  [RequestStatus.CLOSED]: "Closed",
+};
+
 function statusTone(status: RequestStatus) {
-  if (status === RequestStatus.NEW) return "text-emerald-800 bg-emerald-50 border-emerald-200";
-  if (status === RequestStatus.AWAITING_REPLY || status === RequestStatus.NEEDS_INFO)
-    return "text-amber-800 bg-amber-50 border-amber-200";
+  if (status === RequestStatus.OPEN) return "text-emerald-800 bg-emerald-50 border-emerald-200";
+  if (status === RequestStatus.IN_PROGRESS) return "text-blue-800 bg-blue-50 border-blue-200";
+  if (status === RequestStatus.NEEDS_INFO) return "text-amber-800 bg-amber-50 border-amber-200";
+  if (status === RequestStatus.RESOLVED) return "text-slate-800 bg-slate-100 border-slate-200";
   return "text-slate-700 bg-slate-50 border-slate-200";
 }
 
 function formatSla(slaDueAt: string | null) {
-  if (!slaDueAt) return "—";
+  if (!slaDueAt) return "SLA not set";
   const due = new Date(slaDueAt).getTime();
   const now = Date.now();
   const diffMinutes = Math.round((due - now) / 60000);
@@ -41,10 +57,7 @@ type InboxPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function InboxPage({ searchParams }: InboxPageProps) {
-  const resolvedSearchParams = searchParams ? await searchParams : undefined;
-  const includeVendors =
-    typeof resolvedSearchParams?.vendors === "string" && ["1", "true", "yes"].includes(resolvedSearchParams.vendors);
+export default async function InboxPage() {
   const session = await auth();
   if (!session?.user?.id) {
     return (
@@ -54,49 +67,7 @@ export default async function InboxPage({ searchParams }: InboxPageProps) {
     );
   }
 
-  const hoas = await prisma.hOA.findMany({
-    where: { userId: session.user.id },
-    select: { id: true },
-  });
-  const hoaIds = hoas.map((h) => h.id);
-  const soon = addHours(new Date(), 24);
-
-  const kinds = includeVendors ? [RequestKind.RESIDENT_REQUEST, RequestKind.VENDOR_INQUIRY] : [RequestKind.RESIDENT_REQUEST];
-
-  const items = hoaIds.length
-    ? await prisma.request
-        .findMany({
-          where: {
-            hoaId: { in: hoaIds },
-            kind: { in: kinds },
-            OR: [
-              { status: { in: [RequestStatus.NEW, RequestStatus.NEEDS_INFO, RequestStatus.AWAITING_REPLY] } },
-              { slaDueAt: { lte: soon } },
-            ],
-          },
-          orderBy: [
-            { status: "asc" },
-            { priority: "desc" },
-            { slaDueAt: "asc" },
-            { updatedAt: "desc" },
-          ],
-          take: 50,
-          include: { resident: true },
-        })
-        .then((requests) =>
-          requests.map((req) => ({
-            id: req.id,
-            summary: req.summary ?? req.subject,
-            residentName: req.resident?.name ?? null,
-            residentEmail: req.resident?.email ?? "",
-            category: req.category,
-            priority: req.priority,
-            status: req.status,
-            slaDueAt: req.slaDueAt?.toISOString() ?? null,
-            updatedAt: req.updatedAt.toISOString(),
-          })),
-        )
-    : [];
+  const { items } = await getInboxItemsForUser(session.user.id);
 
   return (
     <div className="space-y-6">
@@ -111,29 +82,33 @@ export default async function InboxPage({ searchParams }: InboxPageProps) {
 
       {items.length === 0 ? (
         <GlassPanel className="p-10 text-center text-sm text-[var(--color-muted)]">
-          Nothing requires attention right now.
+          Nothing requires your attention right now.
         </GlassPanel>
       ) : (
         <div className="space-y-3">
           {items.map((item) => (
             <Link key={item.id} href={`/app/requests/${item.id}`} className="block">
               <GlassPanel className="group flex flex-col gap-2 border border-[var(--color-border)] bg-white/80 p-4 transition hover:border-[var(--color-ink)]/20">
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2">
                   <p className="flex-1 text-base font-semibold text-[var(--color-ink)] leading-relaxed">
                     {item.summary ?? "No summary yet."}
                   </p>
-                  <span className={cn("inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]", statusTone(item.status))}>
-                    {item.status}
+                  <span className={cn("inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-semibold", statusTone(item.status))}>
+                    {STATUS_LABEL[item.status]}
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--color-muted)]">
-                  <span className="font-semibold text-[var(--color-ink)]">{item.residentName ?? "Unknown"}</span>
-                  <span className="text-[11px] text-[var(--color-muted)]">{item.residentEmail}</span>
-                  <span className={cn("inline-flex items-center rounded-full border px-2 py-1 text-[12px] font-semibold", pill(item.priority))}>{item.priority}</span>
-                  <span className="inline-flex items-center rounded-full border border-[var(--color-border)] px-2 py-1 text-[12px] font-semibold text-[var(--color-ink)]">
-                    {item.category}
+                  <span className="font-semibold text-[var(--color-ink)]">{item.residentDisplayName || "Unknown resident"}</span>
+                  <span className="inline-flex items-center gap-2 text-[12px] font-semibold text-[var(--color-ink)]">
+                    <span className="inline-flex items-center rounded-full border border-[var(--color-border)] px-2 py-1 text-[12px] font-semibold text-[var(--color-ink)]">
+                      {friendlyLabel(item.category)}
+                    </span>
+                    <span className={cn("inline-flex items-center rounded-full border px-2 py-1 text-[12px] font-semibold", pill(item.priority))}>{friendlyLabel(item.priority)}</span>
+                    <span className="inline-flex items-center rounded-full border border-[var(--color-border)] px-2 py-1 text-[12px] font-semibold text-[var(--color-ink)]">
+                      {STATUS_LABEL[item.status]}
+                    </span>
+                    <span className="text-[12px] font-semibold text-[var(--color-ink)]">{formatSla(item.slaDueAt)}</span>
                   </span>
-                  <span className="text-[12px] font-semibold text-[var(--color-ink)]">{formatSla(item.slaDueAt)}</span>
                 </div>
               </GlassPanel>
             </Link>

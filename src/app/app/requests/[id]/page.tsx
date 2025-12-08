@@ -72,8 +72,24 @@ function friendlyMissingInfo(items: string[] | null | undefined) {
   });
 }
 
+const STATUS_LABEL: Record<RequestStatus, string> = {
+  [RequestStatus.OPEN]: "Open",
+  [RequestStatus.IN_PROGRESS]: "In progress",
+  [RequestStatus.NEEDS_INFO]: "Needs info",
+  [RequestStatus.RESOLVED]: "Resolved",
+  [RequestStatus.CLOSED]: "Closed",
+};
+
+function friendlyLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 function deriveRisk(request: RequestDetail) {
-  if (request.hasLegalRisk || request.category === RequestCategory.LEGAL) return "Legal-Sensitive";
+  if (request.hasLegalRisk) return "Legal-Sensitive";
   if (request.category === RequestCategory.VIOLATION || request.category === RequestCategory.BOARD)
     return "Policy-Sensitive";
   return "Neutral";
@@ -100,14 +116,14 @@ export default async function RequestDetailPage({ params }: PageProps) {
   const request = await fetchRequest(id);
   const draft = request.drafts[0];
   const hasDraft = Boolean(draft?.content?.trim());
-  const isResidentRequest = request.kind === "RESIDENT_REQUEST" && Boolean(request.resident?.email);
+  const isResidentRequest = request.kind === RequestKind.RESIDENT && Boolean(request.resident?.email);
   const hasMissingInfo = Boolean(request.missingInfo?.length);
   const missingInfoLines = friendlyMissingInfo(request.missingInfo);
   const issueLine = deriveIssue(request);
   const contextLine = [request.resident?.name || request.resident?.email, request.hoa.name].filter(Boolean).join(" · ") || "Resident context unavailable";
   const riskLevel = deriveRisk(request);
   const suggestedNext = deriveNextStep(request, isResidentRequest, hasMissingInfo, hasDraft);
-  const nonResidentNotice = request.kind !== "RESIDENT_REQUEST" || !request.resident?.email;
+  const nonResidentNotice = request.kind !== RequestKind.RESIDENT || !request.resident?.email;
 
   return (
     <div className="space-y-6">
@@ -116,7 +132,7 @@ export default async function RequestDetailPage({ params }: PageProps) {
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">Request</p>
           <h1 className="text-3xl font-semibold text-slate-900">{issueLine || "Resident request"}</h1>
           <p className="text-sm text-slate-600">
-            {request.resident?.name ?? "Unknown sender"}
+            {request.resident?.name ?? "Unknown resident"}
             {request.resident?.email ? ` · ${request.resident.email}` : ""}
             {" · "}
             {request.hoa.name}
@@ -159,9 +175,9 @@ export default async function RequestDetailPage({ params }: PageProps) {
           <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Classification & Routing</p>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <DataPoint label="Request type" value={isResidentRequest ? "Resident request" : "Non-resident / external"} />
-            <DataPoint label="Category" value={request.category} />
-            <DataPoint label="Priority" value={request.priority} />
-            <DataPoint label="Status" value={request.status} />
+            <DataPoint label="Category" value={friendlyLabel(request.category)} />
+            <DataPoint label="Priority" value={friendlyLabel(request.priority)} />
+            <DataPoint label="Status" value={STATUS_LABEL[request.status]} />
             <DataPoint label="SLA" value={formatSla(request.slaDueAt)} />
           </div>
           {nonResidentNotice ? (
@@ -170,6 +186,18 @@ export default async function RequestDetailPage({ params }: PageProps) {
             </div>
           ) : null}
         </GlassPanel>
+
+        {missingInfoLines?.length ? (
+          <GlassPanel className="space-y-3 p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Missing Information (internal)</p>
+            <ul className="list-disc space-y-1 pl-4 text-sm text-[var(--color-ink)]">
+              {missingInfoLines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            <p className="text-xs text-[var(--color-muted)]">Use plain questions. Do not expose internal field names.</p>
+          </GlassPanel>
+        ) : null}
 
         <GlassPanel className="space-y-4 p-6">
           <div className="flex items-center justify-between">
@@ -200,18 +228,6 @@ export default async function RequestDetailPage({ params }: PageProps) {
             )}
           </div>
         </GlassPanel>
-
-        {missingInfoLines?.length ? (
-          <GlassPanel className="space-y-3 p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Missing Information (internal)</p>
-            <ul className="list-disc space-y-1 pl-4 text-sm text-[var(--color-ink)]">
-              {missingInfoLines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-            <p className="text-xs text-[var(--color-muted)]">Use plain questions. Do not expose internal field names.</p>
-          </GlassPanel>
-        ) : null}
 
         <GlassPanel className="space-y-3 p-6">
           <div className="flex items-center justify-between">

@@ -9,10 +9,9 @@ type Props = {
 };
 
 const STATUS_OPTIONS: RequestStatus[] = [
-  RequestStatus.NEW,
-  RequestStatus.AWAITING_REPLY,
-  RequestStatus.NEEDS_INFO,
+  RequestStatus.OPEN,
   RequestStatus.IN_PROGRESS,
+  RequestStatus.NEEDS_INFO,
   RequestStatus.RESOLVED,
   RequestStatus.CLOSED,
 ];
@@ -25,13 +24,12 @@ const PRIORITY_OPTIONS: RequestPriority[] = [
 ];
 
 const CATEGORY_OPTIONS: RequestCategory[] = [
+  RequestCategory.GENERAL,
   RequestCategory.MAINTENANCE,
   RequestCategory.VIOLATION,
   RequestCategory.BILLING,
-  RequestCategory.GENERAL,
   RequestCategory.BOARD,
-  RequestCategory.LEGAL,
-  RequestCategory.SPAM,
+  RequestCategory.OTHER,
 ];
 
 export function RequestsFilters({ resolvedSearch }: Props) {
@@ -73,7 +71,7 @@ export function RequestsFilters({ resolvedSearch }: Props) {
           <option value="">All</option>
           {STATUS_OPTIONS.map((status) => (
             <option key={status} value={status}>
-              {status}
+              {status.replace("_", " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())}
             </option>
           ))}
         </select>

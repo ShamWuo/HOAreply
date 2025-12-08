@@ -17,7 +17,7 @@ export function AppSidebar({ navItems, userName, userRole }: AppSidebarProps) {
   const active = navItems.find((item) => pathname.startsWith(new URL(item.href, "https://example.com").pathname));
 
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-muted)]">
+    <aside className="sticky top-0 flex h-screen w-60 shrink-0 flex-col overflow-y-auto border-r border-[var(--color-border)] bg-[var(--color-surface)] text-sm text-[var(--color-muted)]">
       <div className="px-4 py-4">
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--color-muted)]">HOA Reply</p>
       </div>

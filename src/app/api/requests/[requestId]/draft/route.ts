@@ -36,7 +36,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ req
   }
 
   const existing = requestRecord.drafts[0];
-  const isFinalStatus = requestRecord.status === RequestStatus.RESOLVED || requestRecord.status === RequestStatus.CLOSED;
+  const isFinalStatus = requestRecord.status === RequestStatus.CLOSED;
   const nextStatus = isFinalStatus ? requestRecord.status : RequestStatus.IN_PROGRESS;
   const threadStatus = mapRequestStatusToThreadStatus(nextStatus);
   const now = new Date();

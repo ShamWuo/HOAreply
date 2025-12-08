@@ -57,10 +57,36 @@ function pillColor(priority: RequestPriority) {
 }
 
 function statusColor(status: RequestStatus) {
-  if (status === RequestStatus.NEW || status === RequestStatus.AWAITING_REPLY) return "bg-blue-100 text-blue-800";
+  if (status === RequestStatus.OPEN) return "bg-blue-100 text-blue-800";
+  if (status === RequestStatus.IN_PROGRESS) return "bg-indigo-100 text-indigo-800";
   if (status === RequestStatus.NEEDS_INFO) return "bg-amber-100 text-amber-800";
-  if (status === RequestStatus.RESOLVED || status === RequestStatus.CLOSED) return "bg-emerald-100 text-emerald-800";
+  if (status === RequestStatus.RESOLVED) return "bg-emerald-100 text-emerald-800";
+  if (status === RequestStatus.CLOSED) return "bg-slate-200 text-slate-800";
   return "bg-slate-100 text-slate-800";
+}
+
+const STATUS_LABEL: Record<RequestStatus, string> = {
+  [RequestStatus.OPEN]: "Open",
+  [RequestStatus.IN_PROGRESS]: "In progress",
+  [RequestStatus.NEEDS_INFO]: "Needs info",
+  [RequestStatus.RESOLVED]: "Resolved",
+  [RequestStatus.CLOSED]: "Closed",
+};
+
+function friendlyLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatTitle(req: Pick<RequestListItem, "subject" | "category">) {
+  const cleanSubject = req.subject?.trim();
+  if (cleanSubject) return { title: cleanSubject, hint: null as string | null };
+
+  const categoryLabel = req.category.toLowerCase().replace(/_/g, " ");
+  return { title: `${categoryLabel} request`, hint: "No subject" };
 }
 
 function formatSla(slaDueAt: string | null) {
@@ -102,8 +128,8 @@ export default async function RequestsPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <header className="space-y-1">
         <p className="text-sm font-semibold text-slate-700">Requests</p>
-        <h1 className="text-3xl font-semibold text-slate-900">Inbox</h1>
-        <p className="text-sm text-slate-600">All resident communications, structured and tracked.</p>
+        <h1 className="text-3xl font-semibold text-slate-900">Requests</h1>
+        <p className="text-sm text-slate-600">All resident requests, past and present.</p>
         <p className="text-xs text-slate-500">{total} request{total === 1 ? "" : "s"} found</p>
       </header>
 
@@ -132,21 +158,28 @@ export default async function RequestsPage({ searchParams }: PageProps) {
                 {requests.map((req) => (
                   <tr key={req.id} className="relative hover:bg-slate-50/70">
                     <td className="px-5 py-4 align-top">
-                      <p className="text-sm font-semibold text-[var(--color-ink)]">{req.residentName ?? "Unknown"}</p>
+                      <p className="text-sm font-semibold text-[var(--color-ink)]">{req.residentName ?? "Unknown resident"}</p>
                       <p className="text-xs text-[var(--color-muted)]">{req.residentEmail}</p>
                     </td>
                     <td className="px-5 py-4 align-top text-[var(--color-ink)]">
-                      <p className="text-sm font-semibold">{req.subject || "No subject"}</p>
-                      <p className="text-[11px] text-[var(--color-muted)]">{req.id.slice(0, 8)}</p>
+                      {(() => {
+                        const title = formatTitle(req);
+                        return (
+                          <>
+                            <p className="text-sm font-semibold">{title.title}</p>
+                            <p className="text-[11px] text-[var(--color-muted)]">{title.hint ?? req.subject ?? ""}</p>
+                          </>
+                        );
+                      })()}
                     </td>
                     <td className="px-5 py-4 align-top">
-                      <span className="inline-flex rounded-md border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-ink)]">{req.category}</span>
+                      <span className="inline-flex rounded-md border border-[var(--color-border)] px-2 py-1 text-xs text-[var(--color-ink)]">{friendlyLabel(req.category)}</span>
                     </td>
                     <td className="px-5 py-4 align-top">
-                      <span className={cn("inline-flex rounded-md border px-2 py-1 text-xs font-semibold", pillColor(req.priority))}>{req.priority}</span>
+                      <span className={cn("inline-flex rounded-md border px-2 py-1 text-xs font-semibold", pillColor(req.priority))}>{friendlyLabel(req.priority)}</span>
                     </td>
                     <td className="px-5 py-4 align-top">
-                      <span className={cn("inline-flex rounded-md border px-2 py-1 text-xs", statusColor(req.status))}>{req.status}</span>
+                      <span className={cn("inline-flex rounded-md border px-2 py-1 text-xs", statusColor(req.status))}>{STATUS_LABEL[req.status]}</span>
                     </td>
                     <td className="px-5 py-4 align-top text-[var(--color-muted)]">{formatSla(req.slaDueAt)}</td>
                     <td className="px-5 py-4 align-top text-[var(--color-muted)]">{new Date(req.updatedAt).toLocaleString()}</td>

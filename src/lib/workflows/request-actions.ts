@@ -57,9 +57,7 @@ export async function approveDraft(params: { requestId: string; draftId?: string
     data: { approvedAt: new Date(), approvedByUserId: params.userId },
   });
 
-  const isFinalStatus = request.status === RequestStatus.RESOLVED || request.status === RequestStatus.CLOSED;
-  const nextStatus = isFinalStatus ? request.status : RequestStatus.IN_PROGRESS;
-
+  const nextStatus = RequestStatus.IN_PROGRESS;
   const threadStatus = mapRequestStatusToThreadStatus(nextStatus);
 
   await prisma.$transaction([
@@ -92,7 +90,7 @@ export async function approveDraft(params: { requestId: string; draftId?: string
   ]);
 
   logInfo("draft approved", { requestId: request.id, draftId: draft.id, status: nextStatus });
-  return { requestId: request.id, draft: approved, status: nextStatus, externalWarning: request.kind !== RequestKind.RESIDENT_REQUEST };
+  return { requestId: request.id, draft: approved, status: nextStatus, externalWarning: request.kind !== RequestKind.RESIDENT };
 }
 
 export async function sendDraftReply(params: { requestId: string; draftId?: string; userId: string; overrideExternal?: boolean }) {
@@ -121,7 +119,6 @@ export async function sendDraftReply(params: { requestId: string; draftId?: stri
 
   const requiresApproval =
     request.hasLegalRisk ||
-    request.category === RequestCategory.LEGAL ||
     request.category === RequestCategory.BOARD;
   if (requiresApproval && !draft.approvedAt) {
     throw new Error("Approval required before sending");
@@ -166,7 +163,7 @@ export async function sendDraftReply(params: { requestId: string; draftId?: stri
     },
   });
 
-  const nextStatus = RequestStatus.AWAITING_REPLY;
+  const nextStatus = RequestStatus.NEEDS_INFO;
   const threadStatus = mapRequestStatusToThreadStatus(nextStatus);
 
   await prisma.$transaction([
@@ -203,7 +200,7 @@ export async function sendDraftReply(params: { requestId: string; draftId?: stri
   ]);
 
   logInfo("draft sent", { requestId: request.id, draftId: draft.id, to, status: nextStatus });
-  return { requestId: request.id, draftId: draft.id, to, status: nextStatus, externalWarning: request.kind !== RequestKind.RESIDENT_REQUEST };
+  return { requestId: request.id, draftId: draft.id, to, status: nextStatus, externalWarning: request.kind !== RequestKind.RESIDENT };
 }
 
 type GuardContext = {
@@ -223,21 +220,17 @@ export class ValidationError extends Error {
 
 async function validateRequestGuard(ctx: GuardContext) {
   const missingInfo = ctx.request.missingInfo ?? [];
-  const nonResident = ctx.request.kind !== RequestKind.RESIDENT_REQUEST;
-  const closed = ctx.request.status === RequestStatus.CLOSED || ctx.request.status === RequestStatus.RESOLVED;
+  const nonResident = ctx.request.kind !== RequestKind.RESIDENT;
+  const invalidStatus = ctx.request.status !== RequestStatus.IN_PROGRESS;
 
-  let passed = true;
-  let reason: string | null = null;
+  let failure: { code: "MISSING_INFO" | "NOT_RESIDENT_REQUEST" | "INVALID_STATUS"; reason: string } | null = null;
 
   if (missingInfo.length > 0) {
-    passed = false;
-    reason = "Missing required information";
-  } else if (closed) {
-    passed = false;
-    reason = "Request is closed";
-  } else if (nonResident && !ctx.overrideExternal) {
-    passed = false;
-    reason = "Non-resident or external message";
+    failure = { code: "MISSING_INFO", reason: "Missing required information" };
+  } else if (nonResident) {
+    failure = { code: "NOT_RESIDENT_REQUEST", reason: "Non-resident or external message" };
+  } else if (invalidStatus) {
+    failure = { code: "INVALID_STATUS", reason: "Request is not in reviewable status" };
   }
 
   await prisma.auditLog.create({
@@ -248,8 +241,8 @@ async function validateRequestGuard(ctx: GuardContext) {
       action: AuditAction.VALIDATION,
       metadata: {
         action: ctx.action,
-        passed,
-        reason,
+        result: failure ? "blocked" : "allowed",
+        reason: failure?.code ?? null,
         missingInfo,
         status: ctx.request.status,
         kind: ctx.request.kind,
@@ -258,12 +251,12 @@ async function validateRequestGuard(ctx: GuardContext) {
     },
   });
 
-  if (!passed) {
-    throw new ValidationError(reason ?? "Validation failed", {
+  if (failure) {
+    throw new ValidationError(failure.reason, {
+      code: failure.code,
       action: ctx.action,
       missingInfo,
       kind: ctx.request.kind,
-      requiresOverride: nonResident && !ctx.overrideExternal,
       status: ctx.request.status,
     });
   }

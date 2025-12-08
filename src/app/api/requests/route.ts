@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     priority: priorityFilter && priorityFilter.length ? { in: priorityFilter } : undefined,
     category: categoryFilter && categoryFilter.length ? { in: categoryFilter } : undefined,
     hasLegalRisk: hasLegalRisk ? true : undefined,
-    kind: kindFilter && kindFilter.length ? { in: kindFilter } : undefined,
+    kind: kindFilter && kindFilter.length ? { in: kindFilter } : { equals: RequestKind.RESIDENT },
     OR: q
       ? [
           { subject: { contains: q, mode: "insensitive" } },

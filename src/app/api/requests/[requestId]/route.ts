@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { RequestKind } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -58,7 +59,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ request
     data: {
       status: "CLOSED",
       closedAt: new Date(),
-      kind: isNonRequestClose ? "OTHER_NON_REQUEST" : undefined,
+      kind: isNonRequestClose ? RequestKind.UNKNOWN : undefined,
     },
   });
 

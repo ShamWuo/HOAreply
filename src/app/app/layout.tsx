@@ -20,7 +20,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         userName={session?.user?.name ?? session?.user?.email ?? "User"}
         userRole="Member"
       />
-      <main className="flex-1">
+      <main className="flex-1 min-h-screen overflow-y-auto">
         <div className="mx-auto w-full max-w-7xl px-6 py-10 md:px-10">{children}</div>
       </main>
     </div>
