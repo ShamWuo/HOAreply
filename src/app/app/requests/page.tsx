@@ -3,6 +3,7 @@ import Link from "next/link";
 import { RequestCategory, RequestPriority, RequestStatus } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { cn } from "@/lib/utils";
+import { RequestsFilters } from "./requests-filters";
 
 type RequestListItem = {
   id: string;
@@ -12,7 +13,8 @@ type RequestListItem = {
   status: RequestStatus;
   slaDueAt: string | null;
   updatedAt: string;
-  resident: { name: string | null; email: string | null } | null;
+  residentName: string | null;
+  residentEmail: string;
 };
 
 async function cookieHeader() {
@@ -43,40 +45,15 @@ async function fetchRequests(searchParams: Record<string, string | string[] | un
   if (!res.ok) {
     throw new Error("Failed to load requests");
   }
-  const data = (await res.json()) as { requests: RequestListItem[] };
-  return data.requests;
+  const data = (await res.json()) as { items: RequestListItem[]; total: number };
+  return data;
 }
 
-const STATUS_OPTIONS: RequestStatus[] = [
-  RequestStatus.NEW,
-  RequestStatus.AWAITING_REPLY,
-  RequestStatus.NEEDS_INFO,
-  RequestStatus.IN_PROGRESS,
-  RequestStatus.RESOLVED,
-  RequestStatus.CLOSED,
-];
-
-const PRIORITY_OPTIONS: RequestPriority[] = [
-  RequestPriority.URGENT,
-  RequestPriority.HIGH,
-  RequestPriority.NORMAL,
-  RequestPriority.LOW,
-];
-
-const CATEGORY_OPTIONS: RequestCategory[] = [
-  RequestCategory.MAINTENANCE,
-  RequestCategory.VIOLATION,
-  RequestCategory.BILLING,
-  RequestCategory.GENERAL,
-  RequestCategory.BOARD,
-  RequestCategory.LEGAL,
-  RequestCategory.SPAM,
-];
-
 function pillColor(priority: RequestPriority) {
-  if (priority === RequestPriority.URGENT || priority === RequestPriority.HIGH) return "bg-red-100 text-red-800";
-  if (priority === RequestPriority.NORMAL) return "bg-blue-100 text-blue-800";
-  return "bg-slate-100 text-slate-700";
+  if (priority === RequestPriority.URGENT) return "bg-rose-100 text-rose-800";
+  if (priority === RequestPriority.HIGH) return "bg-amber-100 text-amber-800";
+  if (priority === RequestPriority.NORMAL) return "bg-slate-100 text-slate-700";
+  return "bg-slate-50 text-slate-500";
 }
 
 function statusColor(status: RequestStatus) {
@@ -90,9 +67,25 @@ function formatSla(slaDueAt: string | null) {
   if (!slaDueAt) return "—";
   const due = new Date(slaDueAt).getTime();
   const now = Date.now();
-  const diffHours = Math.round(Math.abs(due - now) / 36e5);
-  if (due < now) return diffHours === 0 ? "Overdue" : `Overdue by ${diffHours}h`;
-  return diffHours <= 24 ? `Due in ${diffHours}h` : `Due in ${Math.round(diffHours / 24)}d`;
+  const diffMinutes = Math.round((due - now) / 60000);
+  const absMinutes = Math.abs(diffMinutes);
+
+  const asText = (minutes: number) => {
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 24) return `${hours}h`;
+    return `${Math.round(hours / 24)}d`;
+  };
+
+  if (diffMinutes < 0) {
+    return `Overdue by ${asText(Math.max(1, absMinutes))}`;
+  }
+
+  if (diffMinutes <= 60) {
+    return `Due in ${asText(Math.max(1, diffMinutes))}`;
+  }
+
+  return `Due in ${asText(diffMinutes)}`;
 }
 
 type PageProps = {
@@ -102,7 +95,8 @@ type PageProps = {
 
 export default async function RequestsPage({ searchParams }: PageProps) {
   const resolvedSearch = await searchParams;
-  const requests = await fetchRequests(resolvedSearch);
+  const { items: requests, total } = await fetchRequests(resolvedSearch);
+  const hasFilters = Boolean(resolvedSearch.status || resolvedSearch.priority || resolvedSearch.category || resolvedSearch.q);
 
   return (
     <div className="space-y-6">
@@ -110,69 +104,16 @@ export default async function RequestsPage({ searchParams }: PageProps) {
         <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">Requests</p>
         <h1 className="text-3xl font-semibold text-slate-900">Requests</h1>
         <p className="text-sm text-slate-600">All resident communications, structured and tracked.</p>
+        <p className="text-xs text-slate-500">{total} request{total === 1 ? "" : "s"} found</p>
       </header>
 
-      <form className="grid gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm md:grid-cols-4" action="/app/requests" method="get">
-        <label className="space-y-1 text-[var(--color-muted)]">
-          <span className="text-xs font-semibold uppercase tracking-[0.25em]">Status</span>
-          <select
-            name="status"
-            defaultValue={typeof resolvedSearch.status === "string" ? resolvedSearch.status : ""}
-            className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-[var(--color-ink)]"
-          >
-            <option value="">All</option>
-            {STATUS_OPTIONS.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="space-y-1 text-[var(--color-muted)]">
-          <span className="text-xs font-semibold uppercase tracking-[0.25em]">Category</span>
-          <select
-            name="category"
-            defaultValue={typeof resolvedSearch.category === "string" ? resolvedSearch.category : ""}
-            className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-[var(--color-ink)]"
-          >
-            <option value="">All</option>
-            {CATEGORY_OPTIONS.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="space-y-1 text-[var(--color-muted)]">
-          <span className="text-xs font-semibold uppercase tracking-[0.25em]">Priority</span>
-          <select
-            name="priority"
-            defaultValue={typeof resolvedSearch.priority === "string" ? resolvedSearch.priority : ""}
-            className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-[var(--color-ink)]"
-          >
-            <option value="">All</option>
-            {PRIORITY_OPTIONS.map((priority) => (
-              <option key={priority} value={priority}>
-                {priority}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="space-y-1 text-[var(--color-muted)] md:col-span-1">
-          <span className="text-xs font-semibold uppercase tracking-[0.25em]">Search</span>
-          <input
-            type="text"
-            name="q"
-            defaultValue={typeof resolvedSearch.q === "string" ? resolvedSearch.q : ""}
-            placeholder="Resident, email, subject"
-            className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-[var(--color-ink)]"
-          />
-        </label>
-      </form>
+      <RequestsFilters resolvedSearch={resolvedSearch} />
 
       <GlassPanel className="p-0">
         {requests.length === 0 ? (
-          <div className="p-10 text-center text-sm text-[var(--color-muted)]">No requests match these filters.</div>
+          <div className="p-10 text-center text-sm text-[var(--color-muted)]">
+            {hasFilters ? "No requests match these filters." : "No requests yet."}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
@@ -191,8 +132,8 @@ export default async function RequestsPage({ searchParams }: PageProps) {
                 {requests.map((req) => (
                   <tr key={req.id} className="relative hover:bg-slate-50">
                     <td className="px-4 py-3 align-top">
-                      <p className="font-semibold text-[var(--color-ink)]">{req.resident?.name ?? "Unknown"}</p>
-                      <p className="text-xs text-[var(--color-muted)]">{req.resident?.email ?? ""}</p>
+                      <p className="font-semibold text-[var(--color-ink)]">{req.residentName ?? "Unknown"}</p>
+                      <p className="text-xs text-[var(--color-muted)]">{req.residentEmail}</p>
                     </td>
                     <td className="px-4 py-3 align-top text-[var(--color-ink)]">
                       {req.subject || "No subject provided"}
