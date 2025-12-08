@@ -8,15 +8,6 @@ export const generateMetadata = () =>
     canonicalPath: "/",
   });
 
-const navLinks = [
-  { label: "Product", href: "#product" },
-  { label: "How it Works", href: "#how" },
-  { label: "Templates", href: "#templates" },
-  { label: "Analytics", href: "#analytics" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Sign in", href: "/auth/login" },
-];
-
 const pains = [
   "Resident emails are easy to miss or forget",
   "No shared visibility across board members",
@@ -43,7 +34,7 @@ const features = [
   { title: "Structured Requests", detail: "Every issue has a status and history" },
   { title: "Focused Inbox", detail: "Only items that need attention appear" },
   { title: "Templates", detail: "Pre-approved, consistent response language" },
-  { title: "AI Summaries", detail: "Quickly understand long threads — no hallucinated policy interpretation" },
+  { title: "AI Summaries", detail: "Quickly understand long threads — no hallucinated policy interpretation. Summaries are descriptive only — no decisions, no enforcement." },
   { title: "Audit Log", detail: "See who did what, and when" },
 ];
 
@@ -89,13 +80,14 @@ export default function Home() {
               Connect Gmail
             </Link>
             <Link href="#product" className="text-sm font-semibold text-slate-800 hover:text-slate-900">
-              View product
+              View example inbox
             </Link>
           </div>
         </section>
 
         <section id="problem" className="space-y-4 border border-slate-200 bg-slate-50/70 p-6">
           <h2 className="text-2xl font-semibold text-slate-900">Email wasn’t built for HOA governance.</h2>
+          <p className="text-sm font-semibold text-slate-800">When everything lives in email, accountability disappears.</p>
           <ul className="space-y-2 text-sm text-slate-700">
             {pains.map((pain) => (
               <li key={pain} className="flex items-start gap-2">
@@ -208,10 +200,12 @@ export default function Home() {
             <div className="rounded border border-slate-200 bg-white px-4 py-3">
               <p className="text-base font-semibold text-slate-900">Boards</p>
               <p>Flat monthly fee per association</p>
+              <p className="text-xs text-slate-600">Most associations pay under $100/month.</p>
             </div>
             <div className="rounded border border-slate-200 bg-white px-4 py-3">
               <p className="text-base font-semibold text-slate-900">Management companies</p>
               <p>Volume pricing across associations</p>
+              <p className="text-xs text-slate-600">Starts with volume pricing across associations.</p>
             </div>
           </div>
         </section>
