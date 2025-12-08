@@ -8,6 +8,7 @@ import {
   RequestStatus,
   ThreadKind,
   ThreadStatus,
+  type Prisma,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { logInfo } from "@/lib/logger";
@@ -164,6 +165,8 @@ function renderTemplate(body: string, ctx: TemplateContext): string {
 }
 
 async function pickTemplate(hoaId: string, category: RequestCategory, status: RequestStatus) {
+  // Conservative: Only allow selection of templates that are active and approved.
+  // If multiple defaults exist for a situation, always pick the most recently updated.
   const template = await prisma.policyTemplate.findFirst({
     where: { hoaId, category, requestStatus: status, isActive: true },
     orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
@@ -287,36 +290,37 @@ export async function runRequestPipeline(requestId: string) {
     },
   });
 
-  await prisma.auditLog.createMany({
-    data: [
-      {
-        hoaId: request.hoaId,
-        requestId: request.id,
-        action: AuditAction.CLASSIFIED,
-        metadata: classification,
-      },
-      {
-        hoaId: request.hoaId,
-        requestId: request.id,
-        action: AuditAction.STATUS_CHANGED,
-        metadata: { status: routing.status, slaDueAt: routing.slaDueAt },
-      },
-      {
-        hoaId: request.hoaId,
-        requestId: request.id,
-        action: AuditAction.DRAFT_GENERATED,
-        metadata: { draftId: draft.id, templateId: template.id, source: draft.source },
-      },
-      template.id
-        ? {
-            hoaId: request.hoaId,
-            requestId: request.id,
-            action: AuditAction.TEMPLATE_APPLIED,
-            metadata: { draftId: draft.id, templateId: template.id },
-          }
-        : null,
-    ].filter(Boolean) as Parameters<typeof prisma.auditLog.createMany>[0]["data"],
-  });
+  const auditEntries: Prisma.AuditLogCreateManyInput[] = [
+    {
+      hoaId: request.hoaId,
+      requestId: request.id,
+      action: AuditAction.CLASSIFIED,
+      metadata: classification,
+    },
+    {
+      hoaId: request.hoaId,
+      requestId: request.id,
+      action: AuditAction.STATUS_CHANGED,
+      metadata: { status: routing.status, slaDueAt: routing.slaDueAt },
+    },
+    {
+      hoaId: request.hoaId,
+      requestId: request.id,
+      action: AuditAction.DRAFT_GENERATED,
+      metadata: { draftId: draft.id, templateId: template.id, source: draft.source },
+    },
+  ];
+
+  if (template.id) {
+    auditEntries.push({
+      hoaId: request.hoaId,
+      requestId: request.id,
+      action: AuditAction.TEMPLATE_APPLIED,
+      metadata: { draftId: draft.id, templateId: template.id },
+    });
+  }
+
+  await prisma.auditLog.createMany({ data: auditEntries });
 
   logInfo("request-pipeline run", {
     requestId: request.id,
@@ -465,48 +469,49 @@ export async function handleInboundRequest(params: {
     },
   });
 
-  await prisma.auditLog.createMany({
-    data: [
-      {
-        hoaId: params.hoaId,
-        requestId: request.id,
-        action: AuditAction.EMAIL_RECEIVED,
-        metadata: { threadId: params.threadId },
-      },
-      {
-        hoaId: params.hoaId,
-        requestId: request.id,
-        action: AuditAction.REQUEST_CREATED,
-        metadata: { category: classification.category, priority: classification.priority },
-      },
-      {
-        hoaId: params.hoaId,
-        requestId: request.id,
-        action: AuditAction.CLASSIFIED,
-        metadata: classification,
-      },
-      {
-        hoaId: params.hoaId,
-        requestId: request.id,
-        action: AuditAction.DRAFT_GENERATED,
-        metadata: { draftId: draft.id, templateId: template.id, source: draft.source },
-      },
-      {
-        hoaId: params.hoaId,
-        requestId: request.id,
-        action: AuditAction.STATUS_CHANGED,
-        metadata: { status: routing.status, slaDueAt: routing.slaDueAt },
-      },
-      template.id
-        ? {
-            hoaId: params.hoaId,
-            requestId: request.id,
-            action: AuditAction.TEMPLATE_APPLIED,
-            metadata: { draftId: draft.id, templateId: template.id },
-          }
-        : null,
-    ].filter(Boolean) as Parameters<typeof prisma.auditLog.createMany>[0]["data"],
-  });
+  const creationAuditEntries: Prisma.AuditLogCreateManyInput[] = [
+    {
+      hoaId: params.hoaId,
+      requestId: request.id,
+      action: AuditAction.EMAIL_RECEIVED,
+      metadata: { threadId: params.threadId },
+    },
+    {
+      hoaId: params.hoaId,
+      requestId: request.id,
+      action: AuditAction.REQUEST_CREATED,
+      metadata: { category: classification.category, priority: classification.priority },
+    },
+    {
+      hoaId: params.hoaId,
+      requestId: request.id,
+      action: AuditAction.CLASSIFIED,
+      metadata: classification,
+    },
+    {
+      hoaId: params.hoaId,
+      requestId: request.id,
+      action: AuditAction.DRAFT_GENERATED,
+      metadata: { draftId: draft.id, templateId: template.id, source: draft.source },
+    },
+    {
+      hoaId: params.hoaId,
+      requestId: request.id,
+      action: AuditAction.STATUS_CHANGED,
+      metadata: { status: routing.status, slaDueAt: routing.slaDueAt },
+    },
+  ];
+
+  if (template.id) {
+    creationAuditEntries.push({
+      hoaId: params.hoaId,
+      requestId: request.id,
+      action: AuditAction.TEMPLATE_APPLIED,
+      metadata: { draftId: draft.id, templateId: template.id },
+    });
+  }
+
+  await prisma.auditLog.createMany({ data: creationAuditEntries });
 
   logInfo("request-pipeline processed", {
     requestId: request.id,

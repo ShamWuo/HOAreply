@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { RequestPriority, RequestStatus } from "@prisma/client";
+import { RequestStatus } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { cn } from "@/lib/utils";
 import { auth } from "@/lib/auth";

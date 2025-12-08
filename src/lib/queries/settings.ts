@@ -89,19 +89,19 @@ export async function getSettingsOverview(userId: string): Promise<SettingsOverv
     }
   });
 
+  // Conservative: Enforce only one default template per (category, status). If multiple, pick the most recently updated (by order).
   const defaultsByHoa = new Map<string, Partial<Record<RequestCategory, Partial<Record<RequestStatus, SettingsTemplateDefault>>>>>();
   defaultTemplates.forEach((tpl) => {
     const current = defaultsByHoa.get(tpl.hoaId) ?? {};
     const categoryDefaults = current[tpl.category] ?? {};
-    if (!categoryDefaults[tpl.requestStatus]) {
-      categoryDefaults[tpl.requestStatus] = {
-        templateId: tpl.id,
-        title: tpl.title,
-        category: tpl.category,
-        requestStatus: tpl.requestStatus,
-        updatedAt: tpl.updatedAt?.toISOString() ?? null,
-      };
-    }
+    // Always overwrite with the most recently updated default (due to orderBy: updatedAt desc)
+    categoryDefaults[tpl.requestStatus] = {
+      templateId: tpl.id,
+      title: tpl.title,
+      category: tpl.category,
+      requestStatus: tpl.requestStatus,
+      updatedAt: tpl.updatedAt?.toISOString() ?? null,
+    };
     current[tpl.category] = categoryDefaults;
     defaultsByHoa.set(tpl.hoaId, current);
   });

@@ -17,11 +17,6 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function formatDateTime(iso: string | null) {
-  if (!iso) return "Not yet";
-  return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
 export default async function SettingsPage() {
   const session = await auth();
   if (!session?.user?.id) {

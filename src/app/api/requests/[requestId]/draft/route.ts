@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AuditAction, DraftAuthor, DraftSource, RequestStatus } from "@prisma/client";
+import { AuditAction, DraftAuthor, DraftSource, RequestStatus, type Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { mapRequestStatusToThreadStatus } from "@/lib/workflows/request-pipeline";
@@ -53,7 +53,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ req
       return NextResponse.json({ error: "Template not available" }, { status: 400 });
     }
 
-    if (template.category !== requestRecord.category || template.requestStatus !== requestRecord.status) {
+    if (template.category !== requestRecord.category || (template.requestStatus && template.requestStatus !== requestRecord.status)) {
       return NextResponse.json({ error: "Template does not match request state" }, { status: 400 });
     }
 
@@ -101,7 +101,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ req
       data: { status: threadStatus },
     });
 
-    const auditEntries = [
+    const auditEntries: Prisma.AuditLogCreateManyInput[] = [
       {
         hoaId: requestRecord.hoaId,
         requestId: requestRecord.id,

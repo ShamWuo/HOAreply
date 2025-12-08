@@ -94,6 +94,7 @@ export async function approveDraft(params: { requestId: string; draftId?: string
 }
 
 export async function sendDraftReply(params: { requestId: string; draftId?: string; userId: string; overrideExternal?: boolean }) {
+  // Conservative: Always load full request context to ensure all checks are enforced before sending.
   const request = await loadRequest(params.requestId);
   if (!request || !request.hoa || !request.thread) {
     throw new Error("Request not found");
@@ -101,25 +102,23 @@ export async function sendDraftReply(params: { requestId: string; draftId?: stri
   if (request.hoa.userId !== params.userId) {
     throw new Error("Unauthorized");
   }
-
+  // Conservative: Never allow sending a reply unless all required approval and audit checks pass.
   const draft = params.draftId
     ? request.drafts.find((d) => d.id === params.draftId)
     : request.drafts[0];
-
   if (!draft) {
     throw new Error("Draft not found");
   }
-
   await validateRequestGuard({
     request,
     action: "send",
     overrideExternal: params.overrideExternal,
     userId: params.userId,
   });
-
   const requiresApproval =
     request.hasLegalRisk ||
     request.category === RequestCategory.BOARD;
+  // Conservative: If request is legal/policy-sensitive, require explicit human approval before sending.
   if (requiresApproval && !draft.approvedAt) {
     throw new Error("Approval required before sending");
   }
@@ -222,9 +221,7 @@ async function validateRequestGuard(ctx: GuardContext) {
   const missingInfo = ctx.request.missingInfo ?? [];
   const nonResident = ctx.request.kind !== RequestKind.RESIDENT;
   const invalidStatus = ctx.request.status !== RequestStatus.IN_PROGRESS;
-
   let failure: { code: "MISSING_INFO" | "NOT_RESIDENT_REQUEST" | "INVALID_STATUS"; reason: string } | null = null;
-
   if (missingInfo.length > 0) {
     failure = { code: "MISSING_INFO", reason: "Missing required information" };
   } else if (nonResident) {
@@ -232,7 +229,7 @@ async function validateRequestGuard(ctx: GuardContext) {
   } else if (invalidStatus) {
     failure = { code: "INVALID_STATUS", reason: "Request is not in reviewable status" };
   }
-
+  // Conservative: Always log every validation attempt for auditability, even if validation fails.
   await prisma.auditLog.create({
     data: {
       hoaId: ctx.request.hoaId,
@@ -250,7 +247,6 @@ async function validateRequestGuard(ctx: GuardContext) {
       },
     },
   });
-
   if (failure) {
     throw new ValidationError(failure.reason, {
       code: failure.code,

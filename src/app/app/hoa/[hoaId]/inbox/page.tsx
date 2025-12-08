@@ -635,13 +635,14 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                       )}
                     >
                       {confidenceLevel === "safe"
-                        ? "Safe to send"
+                        ? "No policy-sensitive language detected (informational only)"
                         : confidenceLevel === "caution"
-                          ? "Needs skim"
+                          ? "Policy-sensitive language detected (informational only)"
                           : confidenceLevel === "needs-review"
-                            ? "Needs review"
+                            ? "Review recommended (informational only)"
                             : "Confidence unknown"}
                     </span>
+                    <span className="text-[10px] text-slate-500 ml-2">Risk indicators are informational only and do not constitute legal advice.</span>
                       {effectivePriority ? (
                         <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-700">
                           Priority: {effectivePriority}
@@ -965,13 +966,14 @@ export default async function InboxPage({ params, searchParams }: InboxPageProps
                     )}
                   >
                     {confidenceLevel === "safe"
-                      ? "Confidence: Safe to send"
+                      ? "No policy-sensitive language detected (informational only)"
                       : confidenceLevel === "caution"
-                        ? "Confidence: Needs skim"
+                        ? "Policy-sensitive language detected (informational only)"
                         : confidenceLevel === "needs-review"
-                          ? "Confidence: Needs review"
+                          ? "Review recommended (informational only)"
                           : "Confidence unknown"}
                   </span>
+                  <span className="text-[10px] text-slate-500 ml-2">Risk indicators are informational only and do not constitute legal advice.</span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
                     Sending as {session.user?.name ?? "Board manager"} | {hoa.name}
                   </span>

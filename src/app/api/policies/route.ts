@@ -96,7 +96,7 @@ export async function POST(req: Request) {
               action: AuditAction.TEMPLATE_SET_AS_DEFAULT,
               metadata: { templateId: created.id, category, requestStatus: nextStatus },
             }
-          : null,
+          : undefined,
         nextIsActive
           ? {
               hoaId: hoa.id,
@@ -110,7 +110,7 @@ export async function POST(req: Request) {
               action: AuditAction.TEMPLATE_DEACTIVATED,
               metadata: { templateId: created.id },
             },
-      ].filter(Boolean) as Parameters<typeof tx.auditLog.createMany>[0]["data"],
+      ].filter((x): x is Exclude<typeof x, undefined> => x !== undefined),
     });
 
     return created;

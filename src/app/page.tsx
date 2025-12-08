@@ -31,7 +31,7 @@ const steps = [
 ];
 
 const features = [
-  { title: "Structured Requests", detail: "Every issue has a status and history" },
+  { title: "Structured Requests", detail: "Every request has a status and history" },
   { title: "Focused Inbox", detail: "Only items that need attention appear" },
   { title: "Templates", detail: "Pre-approved, consistent response language" },
   { title: "AI Summaries", detail: "Quickly understand long threads — no hallucinated policy interpretation. Summaries are descriptive only — no decisions, no enforcement." },
@@ -67,7 +67,6 @@ export default function Home() {
     <div className="min-h-screen bg-white text-slate-900">
       <main className="mx-auto flex max-w-6xl flex-col gap-16 px-4 pb-20 pt-12 md:px-6">
         <section className="space-y-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">HOA Reply</p>
           <h1 className="text-4xl font-semibold text-slate-900">HOA email, structured and accountable.</h1>
           <p className="max-w-2xl text-base text-slate-700">
             Turn resident emails into tracked requests with clear status, ownership, and approved response language.
@@ -125,7 +124,7 @@ export default function Home() {
 
         <section id="templates" className="space-y-3 border border-slate-200 bg-white p-6">
           <h2 className="text-2xl font-semibold text-slate-900">Governed templates</h2>
-          <p className="text-sm text-slate-700">Approved language for known situations. No auto-send. Boards stay in control.</p>
+          <p className="text-sm text-slate-700">Approved language for known situations. No auto-send. Boards stay in control. Templates are policy, not content.</p>
           <div className="flex flex-wrap gap-2 text-sm text-slate-700">
             <span className="rounded border border-slate-200 bg-slate-50 px-3 py-1">Default templates per situation</span>
             <span className="rounded border border-slate-200 bg-slate-50 px-3 py-1">Active / inactive states</span>
@@ -213,6 +212,7 @@ export default function Home() {
             >
               Connect Gmail
             </Link>
+            <span className="text-xs text-slate-600">Gmail remains the source of truth. HOA Reply does not own your emails.</span>
             <Link href="/auth/login" className="text-sm font-semibold text-slate-800 hover:text-slate-900">
               Sign in
             </Link>

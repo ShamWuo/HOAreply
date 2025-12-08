@@ -90,7 +90,7 @@ export async function PUT(req: Request, context: Context) {
             action: nextIsActive ? AuditAction.TEMPLATE_ACTIVATED : AuditAction.TEMPLATE_DEACTIVATED,
             metadata: { templateId: updated.id },
           }
-        : null,
+        : undefined,
       nextIsDefault
         ? {
             hoaId: existing.hoaId,
@@ -98,8 +98,8 @@ export async function PUT(req: Request, context: Context) {
             action: AuditAction.TEMPLATE_SET_AS_DEFAULT,
             metadata: { templateId: updated.id, category: updated.category, requestStatus: updated.requestStatus },
           }
-        : null,
-    ].filter(Boolean) as Parameters<typeof prisma.auditLog.createMany>[0]["data"],
+        : undefined,
+    ].filter((x): x is Exclude<typeof x, undefined> => x !== undefined),
   });
 
   const contentType = req.headers.get("content-type") ?? "";

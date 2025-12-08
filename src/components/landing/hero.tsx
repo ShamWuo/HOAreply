@@ -11,9 +11,6 @@ export function LandingHero() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(37,99,235,0.12),_transparent_55%)]" />
       <div className="relative grid gap-12 lg:grid-cols-2 lg:items-center">
         <div className="space-y-8 animate-fade-up">
-          <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50/70 px-4 py-1 text-xs font-semibold uppercase tracking-[0.35em] text-blue-700">
-            Built for HOA managers under pressure
-          </div>
           <div>
             <h1 className="text-4xl font-bold leading-tight text-slate-900 sm:text-5xl lg:text-6xl">
               Stop drowning in HOA emails without hiring staff.
@@ -38,26 +35,7 @@ export function LandingHero() {
             </Link>
           </div>
           <div className="text-sm text-slate-600">No credit card • Secure Google OAuth • 10-minute setup</div>
-          <div className="flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
-            <span className="rounded-full bg-slate-100 px-3 py-1">Used by Colorado community managers</span>
-            <span className="rounded-full bg-slate-100 px-3 py-1">Pilot live: 3 communities / 143 emails</span>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-3">
-            {[
-              { label: "Replies drafted", value: "87%", note: "Colorado pilot" },
-              { label: "Inbox time saved", value: "42%", note: "Week 1, 143 emails" },
-              { label: "Setup time", value: "10 min", note: "Gmail + built-in workflow" },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-2xl border border-white/70 bg-slate-50/60 px-4 py-3 text-center"
-              >
-                <p className="text-2xl font-semibold text-slate-900">{stat.value}</p>
-                <p className="text-xs uppercase tracking-[0.4em] text-slate-500">{stat.label}</p>
-                {stat.note ? <p className="text-[11px] text-slate-500">{stat.note}</p> : null}
-              </div>
-            ))}
-          </div>
+          {/* Removed decorative pilot stats and startup-y copy for clarity and professionalism */}
         </div>
         <div className="relative animate-slide-in animate-delay-1">
           <div className="rounded-[28px] card-dark p-1 text-white card-tilt">
