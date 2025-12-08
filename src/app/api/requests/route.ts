@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
 
   const items = requests.map((req) => ({
     id: req.id,
+    summary: req.summary ?? req.subject,
     residentName: req.resident?.name ?? null,
     residentEmail: req.resident?.email ?? "",
     subject: req.subject,

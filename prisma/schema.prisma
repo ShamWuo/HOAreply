@@ -145,6 +145,7 @@ model Request {
   hoaId          String
   threadId       String           @unique
   subject        String
+  summary        String?
   residentId     String?
   category       RequestCategory
   priority       RequestPriority  @default(NORMAL)

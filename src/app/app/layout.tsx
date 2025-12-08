@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 
 const navItems = [
-  { label: "Inbox", href: "/app/dashboard" },
+  { label: "Inbox", href: "/app/inbox" },
   { label: "Requests", href: "/app/requests" },
   { label: "Templates", href: "/app/templates" },
   { label: "Analytics", href: "/app/analytics" },
