@@ -11,7 +11,7 @@ import { handleInboundRequest } from "@/lib/workflows/request-pipeline";
 const DEFAULT_QUERY = "in:anywhere newer_than:7d -category:promotions -category:updates -from:me";
 const POLL_JOB_ID = "poll-gmail";
 const POLL_INTERVAL_MINUTES = Math.max(env.GMAIL_POLL_INTERVAL_MINUTES, 5);
-const POLL_LOCK_WINDOW_MS = POLL_INTERVAL_MINUTES * 60 * 1000;
+export const POLL_LOCK_WINDOW_MS = POLL_INTERVAL_MINUTES * 60 * 1000;
 const DEFAULT_TOOL_DOMAINS = [
   "sentry.io",
   "md.getsentry.com",
@@ -39,13 +39,13 @@ const DEFAULT_SYSTEM_PATTERNS = [
 
 const VENDOR_DOMAINS = ["contractor", "services", "repairs", "maintenance", "hvac", "plumbing", "electric"]; // basic heuristic
 
-type PollSummary = {
+export type PollSummary = {
   accountId: string;
   processed: number;
   error?: string;
 };
 
-type PollJobResult = {
+export type PollJobResult = {
   skipped: boolean;
   summaries: PollSummary[];
   reason?: string;
@@ -159,6 +159,47 @@ export async function runGmailPollJob(): Promise<PollJobResult> {
     return { skipped: false, summaries };
   } finally {
     await releaseJobLock(POLL_JOB_ID);
+  }
+}
+
+export async function runUserInitiatedPoll(userId: string): Promise<PollJobResult> {
+  const lockId = `${POLL_JOB_ID}-user-${userId}`;
+  const lockAcquired = await acquireJobLock(lockId, POLL_LOCK_WINDOW_MS);
+
+  if (!lockAcquired) {
+    logWarn("poll-gmail skipped - user lock held", { userId, jobId: lockId });
+    return { skipped: true, summaries: [], reason: "Sync already running" };
+  }
+
+  try {
+    const accounts = await prisma.gmailAccount.findMany({
+      where: { hoa: { userId } },
+    });
+
+    if (!accounts.length) {
+      return { skipped: true, summaries: [], reason: "No connected Gmail accounts" };
+    }
+
+    const summaries: PollSummary[] = [];
+
+    for (const account of accounts) {
+      try {
+        const processed = await pollGmailAccount(account.id);
+        summaries.push({ accountId: account.id, processed });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown poll error";
+        logError("poll-gmail user-triggered account error", { accountId: account.id, userId, error: message });
+        summaries.push({ accountId: account.id, processed: 0, error: message });
+      }
+    }
+
+    return { skipped: false, summaries };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "User poll failed";
+    logError("poll-gmail user-triggered failed", { userId, error: message });
+    return { skipped: true, summaries: [], reason: "Sync temporarily unavailable" };
+  } finally {
+    await releaseJobLock(lockId);
   }
 }
 

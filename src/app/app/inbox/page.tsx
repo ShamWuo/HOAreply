@@ -5,6 +5,7 @@ import { GlassPanel } from "@/components/ui/glass-panel";
 import { cn } from "@/lib/utils";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { InboxRefreshButton } from "@/components/inbox/refresh-button";
 
 function pill(priority: RequestPriority) {
   if (priority === RequestPriority.URGENT) return "border-rose-200 text-rose-800 bg-rose-50";
@@ -99,11 +100,14 @@ export default async function InboxPage({ searchParams }: InboxPageProps) {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <p className="text-sm font-semibold text-slate-700">Inbox</p>
-        <h1 className="text-3xl font-semibold text-slate-900">Needs your attention</h1>
-        <p className="text-sm text-slate-600">Focused triage. No clutter.</p>
-      </header>
+      <div className="flex items-start justify-between gap-3">
+        <header className="space-y-1">
+          <p className="text-sm font-semibold text-slate-700">Inbox</p>
+          <h1 className="text-3xl font-semibold text-slate-900">Needs your attention</h1>
+          <p className="text-sm text-slate-600">Focused triage. No clutter.</p>
+        </header>
+        <InboxRefreshButton />
+      </div>
 
       {items.length === 0 ? (
         <GlassPanel className="p-10 text-center text-sm text-[var(--color-muted)]">
