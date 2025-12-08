@@ -146,6 +146,7 @@ model Request {
   threadId       String           @unique
   subject        String
   summary        String?
+  kind           RequestKind      @default(RESIDENT_REQUEST)
   residentId     String?
   category       RequestCategory
   priority       RequestPriority  @default(NORMAL)
@@ -327,6 +328,13 @@ enum RequestStatus {
   AWAITING_REPLY
   RESOLVED
   CLOSED
+}
+
+enum RequestKind {
+  RESIDENT_REQUEST
+  VENDOR_INQUIRY
+  SALES_SPAM
+  OTHER_NON_REQUEST
 }
 
 enum AuditAction {

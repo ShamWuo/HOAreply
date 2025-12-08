@@ -51,10 +51,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ mes
           threadId: message.thread.id,
           residentId: message.residentId,
           residentName: message.resident?.name ?? message.resident?.email ?? "Resident",
+          residentEmail: message.resident?.email ?? message.from,
+          fromEmail: message.from,
           subject: message.thread.subject,
           bodyText: message.bodyText,
           bodyHtml: message.bodyHtml,
         });
+
+    if (!result.request || !result.draft) {
+      return NextResponse.json({ error: "Message is not a resident request; no draft regenerated." }, { status: 400 });
+    }
 
     logInfo("retry-draft success", { messageId: message.id, threadId: message.threadId, status: result.routing.status });
     const successUrl = new URL(

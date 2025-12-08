@@ -1,39 +1,10 @@
-import { cookies } from "next/headers";
 import Link from "next/link";
-import { RequestCategory, RequestPriority, RequestStatus } from "@prisma/client";
+import { addHours } from "date-fns";
+import { RequestKind, RequestPriority, RequestStatus } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { cn } from "@/lib/utils";
-
-async function cookieHeader() {
-  const store = await cookies();
-  return store
-    .getAll()
-    .map((c) => `${c.name}=${c.value}`)
-    .join("; ");
-}
-
-async function fetchInbox() {
-  const baseUrl = process.env.APP_BASE_URL ?? "http://localhost:3000";
-  const res = await fetch(`${baseUrl}/api/inbox`, {
-    cache: "no-store",
-    headers: { cookie: await cookieHeader() },
-  });
-  if (!res.ok) throw new Error("Failed to load inbox");
-  return (await res.json()) as {
-    items: {
-      id: string;
-      summary: string | null;
-      residentName: string | null;
-      residentEmail: string;
-      category: RequestCategory;
-      priority: RequestPriority;
-      status: RequestStatus;
-      slaDueAt: string | null;
-      updatedAt: string;
-    }[];
-    total: number;
-  };
-}
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 function pill(priority: RequestPriority) {
   if (priority === RequestPriority.URGENT) return "border-rose-200 text-rose-800 bg-rose-50";
@@ -66,7 +37,56 @@ function formatSla(slaDueAt: string | null) {
 }
 
 export default async function InboxPage() {
-  const { items } = await fetchInbox();
+  const session = await auth();
+  if (!session?.user?.id) {
+    return (
+      <GlassPanel className="p-10 text-center text-sm text-[var(--color-muted)]">
+        Please sign in to view inbox.
+      </GlassPanel>
+    );
+  }
+
+  const hoas = await prisma.hOA.findMany({
+    where: { userId: session.user.id },
+    select: { id: true },
+  });
+  const hoaIds = hoas.map((h) => h.id);
+  const soon = addHours(new Date(), 24);
+
+  const items = hoaIds.length
+    ? await prisma.request
+        .findMany({
+          where: {
+            hoaId: { in: hoaIds },
+            kind: RequestKind.RESIDENT_REQUEST,
+            OR: [
+              { status: { in: [RequestStatus.NEW, RequestStatus.NEEDS_INFO, RequestStatus.AWAITING_REPLY] } },
+              { slaDueAt: { lte: soon } },
+            ],
+          },
+          orderBy: [
+            { status: "asc" },
+            { priority: "desc" },
+            { slaDueAt: "asc" },
+            { updatedAt: "desc" },
+          ],
+          take: 50,
+          include: { resident: true },
+        })
+        .then((requests) =>
+          requests.map((req) => ({
+            id: req.id,
+            summary: req.summary ?? req.subject,
+            residentName: req.resident?.name ?? null,
+            residentEmail: req.resident?.email ?? "",
+            category: req.category,
+            priority: req.priority,
+            status: req.status,
+            slaDueAt: req.slaDueAt?.toISOString() ?? null,
+            updatedAt: req.updatedAt.toISOString(),
+          })),
+        )
+    : [];
 
   return (
     <div className="space-y-6">

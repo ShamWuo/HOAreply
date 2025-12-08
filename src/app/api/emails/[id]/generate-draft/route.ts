@@ -79,10 +79,16 @@ export async function POST(
       threadId: thread.id,
       residentId: email.residentId,
       residentName: email.resident?.name ?? email.resident?.email ?? "Resident",
+      residentEmail: email.resident?.email ?? email.from,
+      fromEmail: email.from,
       subject: thread.subject,
       bodyText: email.bodyText,
       bodyHtml: email.bodyHtml,
     });
+
+    if (!result.request || !result.draft) {
+      return NextResponse.json({ error: "Message is not a resident request; no draft generated." }, { status: 400 });
+    }
 
     await createGmailDraftForManager({
       account: gmailAccount,

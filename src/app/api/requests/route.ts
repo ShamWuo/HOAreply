@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma, RequestCategory, RequestPriority, RequestStatus } from "@prisma/client";
+import { Prisma, RequestCategory, RequestKind, RequestPriority, RequestStatus } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
   const statusParam = searchParams.get("status");
   const priorityParam = searchParams.get("priority");
   const categoryParam = searchParams.get("category");
+  const kindParam = searchParams.get("kind");
   const hoaIdParam = searchParams.get("hoaId");
   const q = (searchParams.get("q") ?? searchParams.get("search"))?.trim();
   const hasLegalRisk = searchParams.get("legal") === "true";
@@ -31,6 +32,7 @@ export async function GET(request: NextRequest) {
   const statusFilter = statusParam?.split(",").filter(Boolean) as RequestStatus[] | undefined;
   const priorityFilter = priorityParam?.split(",").filter(Boolean) as RequestPriority[] | undefined;
   const categoryFilter = categoryParam?.split(",").filter(Boolean) as RequestCategory[] | undefined;
+  const kindFilter = kindParam?.split(",").filter(Boolean) as RequestKind[] | undefined;
 
   const scopedHoaIds = hoaIdParam ? hoaIds.filter((id) => id === hoaIdParam) : hoaIds;
   if (!scopedHoaIds.length) {
@@ -43,6 +45,7 @@ export async function GET(request: NextRequest) {
     priority: priorityFilter && priorityFilter.length ? { in: priorityFilter } : undefined,
     category: categoryFilter && categoryFilter.length ? { in: categoryFilter } : undefined,
     hasLegalRisk: hasLegalRisk ? true : undefined,
+    kind: kindFilter && kindFilter.length ? { in: kindFilter } : undefined,
     OR: q
       ? [
           { subject: { contains: q, mode: "insensitive" } },
@@ -80,6 +83,7 @@ export async function GET(request: NextRequest) {
     category: req.category,
     priority: req.priority,
     status: req.status,
+    kind: req.kind,
     slaDueAt: req.slaDueAt?.toISOString() ?? null,
     updatedAt: req.updatedAt.toISOString(),
   }));

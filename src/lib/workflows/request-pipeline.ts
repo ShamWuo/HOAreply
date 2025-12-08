@@ -1,4 +1,12 @@
-import { AuditAction, DraftAuthor, RequestCategory, RequestPriority, RequestStatus, ThreadStatus } from "@prisma/client";
+import {
+  AuditAction,
+  DraftAuthor,
+  RequestCategory,
+  RequestKind,
+  RequestPriority,
+  RequestStatus,
+  ThreadStatus,
+} from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { logInfo } from "@/lib/logger";
 
@@ -7,6 +15,7 @@ export type ClassificationResult = {
   priority: RequestPriority;
   missingInfo: string[];
   hasLegalRisk: boolean;
+  kind: RequestKind;
 };
 
 type RoutingDecision = {
@@ -49,16 +58,33 @@ function normalizeText(subject?: string, body?: string | null) {
 }
 
 // Placeholder classifier; replace with OpenAI/Gemini client as needed.
-export function classifyEmail(subject?: string, bodyText?: string | null, bodyHtml?: string | null): ClassificationResult {
+export function classifyEmail(
+  subject?: string,
+  bodyText?: string | null,
+  bodyHtml?: string | null,
+  opts?: { hasResident: boolean; fromEmail?: string | null; marketing?: boolean },
+): ClassificationResult {
   const text = normalizeText(subject, bodyText ?? bodyHtml ?? undefined);
+  const hasResident = Boolean(opts?.hasResident);
+  const fromEmail = (opts?.fromEmail ?? "").toLowerCase();
+  const domain = fromEmail.split("@")[1] ?? "";
+  const looksSalesy = opts?.marketing || text.includes("unsubscribe") || text.includes("promotion") || text.includes("offer");
+  const looksVendor =
+    text.includes("proposal") ||
+    text.includes("quote") ||
+    text.includes("services") ||
+    text.includes("vendor") ||
+    domain.includes("contractor") ||
+    domain.includes("services") ||
+    domain.includes("repairs");
 
   const category: RequestCategory = (() => {
+    if (looksSalesy) return RequestCategory.SPAM;
     if (text.includes("legal") || text.includes("attorney") || text.includes("lawsuit")) return RequestCategory.LEGAL;
     if (text.includes("board")) return RequestCategory.BOARD;
     if (text.includes("violation") || text.includes("notice") || text.includes("warning")) return RequestCategory.VIOLATION;
     if (text.includes("maintenance") || text.includes("repair") || text.includes("leak")) return RequestCategory.MAINTENANCE;
     if (text.includes("invoice") || text.includes("payment") || text.includes("bill")) return RequestCategory.BILLING;
-    if (text.includes("unsubscribe") || text.includes("marketing")) return RequestCategory.SPAM;
     return RequestCategory.GENERAL;
   })();
 
@@ -70,13 +96,23 @@ export function classifyEmail(subject?: string, bodyText?: string | null, bodyHt
   })();
 
   const missingInfo: string[] = [];
-  const hasUnit = /unit\s*\d|#\d|apt\s*\d/i.test(text);
-  if (!hasUnit) missingInfo.push("unit_number");
-  if (category === RequestCategory.BILLING && !/amount|invoice|payment/i.test(text)) missingInfo.push("billing_details");
+  if (hasResident) {
+    const hasUnit = /unit\s*\d|#\d|apt\s*\d/i.test(text);
+    if (!hasUnit) missingInfo.push("unit_number");
+    if (category === RequestCategory.BILLING && !/amount|invoice|payment/i.test(text)) missingInfo.push("billing_details");
+  }
 
   const hasLegalRisk = category === RequestCategory.LEGAL || /liability|legal|counsel|attorney/i.test(text);
 
-  return { category, priority, missingInfo, hasLegalRisk };
+  const kind: RequestKind = (() => {
+    if (!hasResident && looksSalesy) return RequestKind.SALES_SPAM;
+    if (!hasResident && looksVendor) return RequestKind.VENDOR_INQUIRY;
+    if (!hasResident) return RequestKind.OTHER_NON_REQUEST;
+    if (category === RequestCategory.SPAM) return RequestKind.SALES_SPAM;
+    return RequestKind.RESIDENT_REQUEST;
+  })();
+
+  return { category, priority, missingInfo, hasLegalRisk, kind };
 }
 
 function computeSla(priority: RequestPriority): Date | null {
@@ -85,6 +121,9 @@ function computeSla(priority: RequestPriority): Date | null {
 }
 
 function applyRouting(classification: ClassificationResult): RoutingDecision {
+  if (classification.kind !== RequestKind.RESIDENT_REQUEST) {
+    return { status: RequestStatus.CLOSED, slaDueAt: null };
+  }
   if (classification.missingInfo.length > 0) {
     return { status: RequestStatus.NEEDS_INFO, slaDueAt: null };
   }
@@ -180,12 +219,29 @@ export async function runRequestPipeline(requestId: string) {
   }
 
   const latestMessage = request.thread.messages[0];
-  const classification = classifyEmail(request.subject, latestMessage?.bodyText ?? latestMessage?.bodyHtml ?? undefined, latestMessage?.bodyHtml);
+  const classification = classifyEmail(
+    request.subject,
+    latestMessage?.bodyText ?? latestMessage?.bodyHtml ?? undefined,
+    latestMessage?.bodyHtml,
+    { hasResident: Boolean(request.residentId), fromEmail: latestMessage?.from },
+  );
   const routing = applyRouting(classification);
+
+  const summary = buildSummary({
+    subject: request.subject,
+    residentName: request.resident?.name,
+    residentEmail: request.resident?.email,
+    category: classification.category,
+    priority: classification.priority,
+    missingInfo: classification.missingInfo,
+    hasLegalRisk: classification.hasLegalRisk,
+    hoaName: request.hoa.name,
+  });
 
   const updated = await prisma.request.update({
     where: { id: request.id },
     data: {
+      kind: classification.kind,
       category: classification.category,
       priority: classification.priority,
       missingInfo: classification.missingInfo,
@@ -194,6 +250,7 @@ export async function runRequestPipeline(requestId: string) {
       status: routing.status,
       slaDueAt: routing.slaDueAt ?? undefined,
       lastActionAt: new Date(),
+      summary,
     },
   });
 
@@ -271,12 +328,65 @@ export async function handleInboundRequest(params: {
   threadId: string;
   residentId?: string | null;
   residentName?: string | null;
+  residentEmail?: string | null;
+  fromEmail?: string | null;
+  marketing?: boolean;
   subject: string;
   bodyText?: string | null;
   bodyHtml?: string | null;
 }) {
-  const classification = classifyEmail(params.subject, params.bodyText, params.bodyHtml);
+  const classification = classifyEmail(params.subject, params.bodyText, params.bodyHtml, {
+    hasResident: Boolean(params.residentId),
+    fromEmail: params.fromEmail ?? params.residentEmail,
+    marketing: params.marketing,
+  });
   const routing = applyRouting(classification);
+
+  if (classification.kind !== RequestKind.RESIDENT_REQUEST) {
+    await prisma.threadClassificationHistory.create({
+      data: {
+        threadId: params.threadId,
+        category: classification.category,
+        priority: classification.priority,
+      },
+    }).catch(() => {});
+
+    await prisma.emailThread.update({
+      where: { id: params.threadId },
+      data: {
+        status: ThreadStatus.RESOLVED,
+        category: classification.category,
+        priority: classification.priority,
+      },
+    }).catch(() => {});
+
+    await prisma.auditLog.create({
+      data: {
+        hoaId: params.hoaId,
+        action: AuditAction.CLASSIFIED,
+        metadata: { kind: classification.kind, category: classification.category },
+      },
+    }).catch(() => {});
+
+    logInfo("request-pipeline skipped non-resident", {
+      threadId: params.threadId,
+      hoaId: params.hoaId,
+      kind: classification.kind,
+    });
+
+    return { request: null, draft: null, classification, routing } as const;
+  }
+
+  const summary = buildSummary({
+    subject: params.subject,
+    residentName: params.residentName,
+    residentEmail: params.residentEmail,
+    category: classification.category,
+    priority: classification.priority,
+    missingInfo: classification.missingInfo,
+    hasLegalRisk: classification.hasLegalRisk,
+    hoaName: params.hoaName,
+  });
 
   const request = await prisma.request.upsert({
     where: { threadId: params.threadId },
@@ -292,6 +402,8 @@ export async function handleInboundRequest(params: {
       classification,
       missingInfo: classification.missingInfo,
       hasLegalRisk: classification.hasLegalRisk,
+      kind: classification.kind,
+      summary,
     },
     create: {
       hoaId: params.hoaId,
@@ -305,6 +417,8 @@ export async function handleInboundRequest(params: {
       classification,
       missingInfo: classification.missingInfo,
       hasLegalRisk: classification.hasLegalRisk,
+      kind: classification.kind,
+      summary,
     },
   });
 
@@ -385,4 +499,30 @@ export async function handleInboundRequest(params: {
   });
 
   return { request, draft, classification, routing };
+}
+
+function buildSummary(params: {
+  subject: string;
+  residentName?: string | null;
+  residentEmail?: string | null;
+  category: RequestCategory;
+  priority: RequestPriority;
+  missingInfo: string[];
+  hasLegalRisk: boolean;
+  hoaName: string;
+}) {
+  const issue = (params.subject || "Resident request").trim();
+  const contextParts = [params.residentName ?? params.residentEmail ?? "Resident", params.hoaName].filter(Boolean);
+  if (params.missingInfo.length) {
+    const friendly = params.missingInfo.map((item) => (item.toLowerCase().includes("unit") ? "Unit number" : item.replaceAll("_", " ")));
+    contextParts.push(`Missing: ${friendly.join(", ")}`);
+  }
+  const risk = params.hasLegalRisk || params.category === RequestCategory.LEGAL
+    ? "Legal-Sensitive"
+    : params.category === RequestCategory.BOARD || params.category === RequestCategory.VIOLATION
+      ? "Policy-Sensitive"
+      : "Neutral";
+  const nextStep = params.missingInfo.length ? "Request info" : "Review";
+
+  return `Issue:\n${issue}\n\nContext:\n${contextParts.join("; ") || "Resident context"}\n\nRisk Level:\n${risk}\n\nSuggested Next Step:\n${nextStep}`;
 }

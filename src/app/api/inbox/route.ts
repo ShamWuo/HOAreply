@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { addHours } from "date-fns";
-import { Prisma, RequestStatus } from "@prisma/client";
+import { Prisma, RequestKind, RequestStatus } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -27,6 +27,7 @@ export async function GET() {
 
   const where: Prisma.RequestWhereInput = {
     hoaId: { in: hoaIds },
+    kind: RequestKind.RESIDENT_REQUEST,
     OR: [
       { status: { in: TRIAGE_STATUSES } },
       { slaDueAt: { lte: soon } },
@@ -52,7 +53,7 @@ export async function GET() {
 
   const items = requests.map((req) => ({
     id: req.id,
-    summary: req.summary ?? req.subject,
+    summary: req.subject,
     residentName: req.resident?.name ?? null,
     residentEmail: req.resident?.email ?? "",
     category: req.category,
