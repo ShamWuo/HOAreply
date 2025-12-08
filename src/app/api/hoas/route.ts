@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { listUserHoas, createHoa } from "@/lib/hoa";
 import { hoaSchema } from "@/lib/validators";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   const session = await auth();
@@ -25,6 +26,11 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid HOA name" }, { status: 400 });
   }
+
+  const existingCount = await prisma.hOA.count({ where: { userId: session.user.id } });
+   if (existingCount > 0) {
+     return NextResponse.json({ error: "Only one HOA inbox is supported per workspace." }, { status: 400 });
+   }
 
   const hoa = await createHoa(session.user.id, parsed.data.name);
   return NextResponse.json({ hoa });

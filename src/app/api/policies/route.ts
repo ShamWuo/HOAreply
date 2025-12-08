@@ -14,7 +14,7 @@ export async function GET() {
     select: { id: true, name: true },
   });
   const hoaIds = hoas.map((h) => h.id);
-  if (!hoaIds.length) return NextResponse.json({ policies: [] });
+  if (!hoaIds.length) return NextResponse.json({ policies: [], hoas: [] });
 
   const policies = await prisma.policyTemplate.findMany({
     where: { hoaId: { in: hoaIds } },
