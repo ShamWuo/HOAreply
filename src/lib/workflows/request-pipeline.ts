@@ -5,6 +5,7 @@ import {
   RequestKind,
   RequestPriority,
   RequestStatus,
+  ThreadKind,
   ThreadStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -72,15 +73,15 @@ export function classifyEmail(
   const looksVendor =
     text.includes("proposal") ||
     text.includes("quote") ||
-    text.includes("services") ||
     text.includes("vendor") ||
     domain.includes("contractor") ||
     domain.includes("services") ||
     domain.includes("repairs");
+  const looksLegal = /liability|legal|counsel|attorney|lawsuit|claim|demand/i.test(text);
 
   const category: RequestCategory = (() => {
     if (looksSalesy) return RequestCategory.SPAM;
-    if (text.includes("legal") || text.includes("attorney") || text.includes("lawsuit")) return RequestCategory.LEGAL;
+    if (looksLegal) return RequestCategory.LEGAL;
     if (text.includes("board")) return RequestCategory.BOARD;
     if (text.includes("violation") || text.includes("notice") || text.includes("warning")) return RequestCategory.VIOLATION;
     if (text.includes("maintenance") || text.includes("repair") || text.includes("leak")) return RequestCategory.MAINTENANCE;
@@ -102,7 +103,7 @@ export function classifyEmail(
     if (category === RequestCategory.BILLING && !/amount|invoice|payment/i.test(text)) missingInfo.push("billing_details");
   }
 
-  const hasLegalRisk = category === RequestCategory.LEGAL || /liability|legal|counsel|attorney/i.test(text);
+  const hasLegalRisk = looksLegal;
 
   const kind: RequestKind = (() => {
     if (!hasResident && looksSalesy) return RequestKind.SALES_SPAM;
@@ -261,6 +262,7 @@ export async function runRequestPipeline(requestId: string) {
       status: threadStatus,
       category: classification.category,
       priority: classification.priority,
+      kind: mapRequestKindToThreadKind(classification.kind),
     },
   });
 
@@ -499,6 +501,13 @@ export async function handleInboundRequest(params: {
   });
 
   return { request, draft, classification, routing };
+}
+
+function mapRequestKindToThreadKind(kind: RequestKind): ThreadKind {
+  if (kind === RequestKind.RESIDENT_REQUEST) return ThreadKind.resident;
+  if (kind === RequestKind.VENDOR_INQUIRY) return ThreadKind.vendor;
+  if (kind === RequestKind.SALES_SPAM) return ThreadKind.newsletter_spam;
+  return ThreadKind.unknown;
 }
 
 function buildSummary(params: {

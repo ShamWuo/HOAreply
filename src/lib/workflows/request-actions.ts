@@ -1,4 +1,4 @@
-import { AuditAction, MessageDirection, RequestCategory, RequestStatus } from "@prisma/client";
+import { AuditAction, MessageDirection, RequestCategory, RequestKind, RequestStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendRequestReply } from "@/lib/gmail";
 import { logInfo } from "@/lib/logger";
@@ -28,7 +28,7 @@ async function loadRequest(requestId: string) {
   });
 }
 
-export async function approveDraft(params: { requestId: string; draftId?: string; userId: string }) {
+export async function approveDraft(params: { requestId: string; draftId?: string; userId: string; overrideExternal?: boolean }) {
   const request = await loadRequest(params.requestId);
   if (!request || !request.hoa) {
     throw new Error("Request not found");
@@ -44,6 +44,13 @@ export async function approveDraft(params: { requestId: string; draftId?: string
   if (!draft) {
     throw new Error("Draft not found");
   }
+
+  await validateRequestGuard({
+    request,
+    action: "approve",
+    overrideExternal: params.overrideExternal,
+    userId: params.userId,
+  });
 
   const approved = await prisma.replyDraft.update({
     where: { id: draft.id },
@@ -85,10 +92,10 @@ export async function approveDraft(params: { requestId: string; draftId?: string
   ]);
 
   logInfo("draft approved", { requestId: request.id, draftId: draft.id, status: nextStatus });
-  return { requestId: request.id, draft: approved, status: nextStatus };
+  return { requestId: request.id, draft: approved, status: nextStatus, externalWarning: request.kind !== RequestKind.RESIDENT_REQUEST };
 }
 
-export async function sendDraftReply(params: { requestId: string; draftId?: string; userId: string }) {
+export async function sendDraftReply(params: { requestId: string; draftId?: string; userId: string; overrideExternal?: boolean }) {
   const request = await loadRequest(params.requestId);
   if (!request || !request.hoa || !request.thread) {
     throw new Error("Request not found");
@@ -104,6 +111,13 @@ export async function sendDraftReply(params: { requestId: string; draftId?: stri
   if (!draft) {
     throw new Error("Draft not found");
   }
+
+  await validateRequestGuard({
+    request,
+    action: "send",
+    overrideExternal: params.overrideExternal,
+    userId: params.userId,
+  });
 
   const requiresApproval =
     request.hasLegalRisk ||
@@ -189,5 +203,68 @@ export async function sendDraftReply(params: { requestId: string; draftId?: stri
   ]);
 
   logInfo("draft sent", { requestId: request.id, draftId: draft.id, to, status: nextStatus });
-  return { requestId: request.id, draftId: draft.id, to, status: nextStatus };
+  return { requestId: request.id, draftId: draft.id, to, status: nextStatus, externalWarning: request.kind !== RequestKind.RESIDENT_REQUEST };
+}
+
+type GuardContext = {
+  request: NonNullable<Awaited<ReturnType<typeof loadRequest>>>;
+  action: "approve" | "send";
+  overrideExternal?: boolean;
+  userId: string;
+};
+
+export class ValidationError extends Error {
+  details: Record<string, unknown>;
+  constructor(message: string, details: Record<string, unknown>) {
+    super(message);
+    this.details = details;
+  }
+}
+
+async function validateRequestGuard(ctx: GuardContext) {
+  const missingInfo = ctx.request.missingInfo ?? [];
+  const nonResident = ctx.request.kind !== RequestKind.RESIDENT_REQUEST;
+  const closed = ctx.request.status === RequestStatus.CLOSED || ctx.request.status === RequestStatus.RESOLVED;
+
+  let passed = true;
+  let reason: string | null = null;
+
+  if (missingInfo.length > 0) {
+    passed = false;
+    reason = "Missing required information";
+  } else if (closed) {
+    passed = false;
+    reason = "Request is closed";
+  } else if (nonResident && !ctx.overrideExternal) {
+    passed = false;
+    reason = "Non-resident or external message";
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      hoaId: ctx.request.hoaId,
+      requestId: ctx.request.id,
+      userId: ctx.userId,
+      action: AuditAction.VALIDATION,
+      metadata: {
+        action: ctx.action,
+        passed,
+        reason,
+        missingInfo,
+        status: ctx.request.status,
+        kind: ctx.request.kind,
+        overrideExternal: ctx.overrideExternal ?? false,
+      },
+    },
+  });
+
+  if (!passed) {
+    throw new ValidationError(reason ?? "Validation failed", {
+      action: ctx.action,
+      missingInfo,
+      kind: ctx.request.kind,
+      requiresOverride: nonResident && !ctx.overrideExternal,
+      status: ctx.request.status,
+    });
+  }
 }

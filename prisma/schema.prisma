@@ -62,6 +62,7 @@ model EmailThread {
   gmailThreadId  String         @unique
   subject        String
   status         ThreadStatus   @default(NEW)
+  kind           ThreadKind     @default(unknown)
   assignedToUserId String?
   unreadCount    Int            @default(0)
   category       String?
@@ -304,6 +305,13 @@ enum ThreadStatus {
   ERROR
 }
 
+enum ThreadKind {
+  resident
+  vendor
+  newsletter_spam
+  unknown
+}
+
 enum RequestCategory {
   MAINTENANCE
   VIOLATION
@@ -346,6 +354,7 @@ enum AuditAction {
   STATUS_CHANGED
   APPROVED
   SENT
+  VALIDATION
 }
 
 enum DraftAuthor {

@@ -36,7 +36,14 @@ function formatSla(slaDueAt: string | null) {
   return `Due in ${toText(diffMinutes)}`;
 }
 
-export default async function InboxPage() {
+type InboxPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function InboxPage({ searchParams }: InboxPageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const includeVendors =
+    typeof resolvedSearchParams?.vendors === "string" && ["1", "true", "yes"].includes(resolvedSearchParams.vendors);
   const session = await auth();
   if (!session?.user?.id) {
     return (
@@ -53,12 +60,14 @@ export default async function InboxPage() {
   const hoaIds = hoas.map((h) => h.id);
   const soon = addHours(new Date(), 24);
 
+  const kinds = includeVendors ? [RequestKind.RESIDENT_REQUEST, RequestKind.VENDOR_INQUIRY] : [RequestKind.RESIDENT_REQUEST];
+
   const items = hoaIds.length
     ? await prisma.request
         .findMany({
           where: {
             hoaId: { in: hoaIds },
-            kind: RequestKind.RESIDENT_REQUEST,
+            kind: { in: kinds },
             OR: [
               { status: { in: [RequestStatus.NEW, RequestStatus.NEEDS_INFO, RequestStatus.AWAITING_REPLY] } },
               { slaDueAt: { lte: soon } },

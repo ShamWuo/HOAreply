@@ -1,5 +1,5 @@
 import { addBreadcrumb, captureException } from "@sentry/nextjs";
-import { MessageDirection, ThreadStatus } from "@prisma/client";
+import { MessageDirection, ThreadKind, ThreadStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ensureAccessToken, fetchNewInboxMessages, normalizeGmailMessage } from "@/lib/gmail";
 import { logError, logInfo, logWarn } from "@/lib/logger";
@@ -36,6 +36,8 @@ const DEFAULT_SYSTEM_PATTERNS = [
   "reset your password",
   "password reset",
 ];
+
+const VENDOR_DOMAINS = ["contractor", "services", "repairs", "maintenance", "hvac", "plumbing", "electric"]; // basic heuristic
 
 type PollSummary = {
   accountId: string;
@@ -135,6 +137,14 @@ function shouldSkipForAI(msg: PrefilterEmail, allowedRecipients: string[]) {
   if (isNoReplySender(msg)) return true;
   if (looksLikeSystemConfirmation(msg)) return true;
   return false;
+}
+
+function classifyThreadKind(msg: PrefilterEmail, marketing: boolean, hasResident: boolean): ThreadKind {
+  if (marketing || msg.snippet.toLowerCase().includes("unsubscribe")) return ThreadKind.newsletter_spam;
+  if (hasResident) return ThreadKind.resident;
+  const domain = (msg.fromEmail.split("@")[1] ?? "").toLowerCase();
+  if (VENDOR_DOMAINS.some((d) => domain.includes(d))) return ThreadKind.vendor;
+  return ThreadKind.unknown;
 }
 
 export async function runGmailPollJob(): Promise<PollJobResult> {
@@ -283,6 +293,8 @@ async function processAccount(accountId: string) {
         receivedAt: normalized.receivedAt,
       });
 
+      const threadKind = classifyThreadKind(prefilterEmail, marketing, Boolean(resident));
+
       const thread = await prisma.emailThread.upsert({
         where: { gmailThreadId: message.threadId },
         update: {
@@ -290,6 +302,7 @@ async function processAccount(accountId: string) {
           updatedAt: new Date(),
           gmailAccountId: freshAccount.id,
           category: marketing ? "spam" : undefined,
+          kind: threadKind,
           unreadCount: { increment: 1 },
         },
         create: {
@@ -299,6 +312,7 @@ async function processAccount(accountId: string) {
           gmailAccountId: freshAccount.id,
           status: ThreadStatus.NEW,
           category: marketing ? "spam" : undefined,
+          kind: threadKind,
           unreadCount: 1,
         },
       });
