@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { RequestCategory, RequestPriority } from "@prisma/client";
+import { RequestCategory, RequestPriority, RequestStatus } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     const form = await req.formData().catch(() => null);
     if (form) data = Object.fromEntries(form.entries());
   }
-  const { hoaId, category, priority, title, bodyTemplate, isDefault } = data;
+  const { hoaId, category, priority, title, bodyTemplate, isDefault, appliesToStatus, missingFields } = data;
 
   if (!hoaId || !category || !title || !bodyTemplate) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -49,15 +49,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "HOA not found" }, { status: 404 });
   }
 
-  const policy = await prisma.policyTemplate.create({
-    data: {
-      hoaId: hoa.id,
-      category: category as RequestCategory,
-      priority: priority ? (priority as RequestPriority) : null,
-      title: String(title),
-      bodyTemplate: String(bodyTemplate),
-      isDefault: Boolean(isDefault),
-    },
+  const parsedMissing =
+    Array.isArray(missingFields) ? missingFields.map((v) => String(v).trim()).filter(Boolean) : typeof missingFields === "string" ? missingFields.split(",").map((v) => v.trim()).filter(Boolean) : [];
+
+  const policy = await prisma.$transaction(async (tx) => {
+    if (isDefault) {
+      await tx.policyTemplate.updateMany({
+        where: { hoaId: hoa.id, category: category as RequestCategory, appliesToStatus: appliesToStatus ? (appliesToStatus as RequestStatus) : null },
+        data: { isDefault: false },
+      });
+    }
+
+    return tx.policyTemplate.create({
+      data: {
+        hoaId: hoa.id,
+        category: category as RequestCategory,
+        priority: priority ? (priority as RequestPriority) : null,
+        title: String(title),
+        bodyTemplate: String(bodyTemplate),
+        isDefault: Boolean(isDefault),
+        appliesToStatus: appliesToStatus ? (appliesToStatus as RequestStatus) : null,
+        missingFields: parsedMissing,
+      },
+    });
   });
 
   if (!contentType.includes("application/json")) {

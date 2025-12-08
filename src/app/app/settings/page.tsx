@@ -1,66 +1,236 @@
+import Link from "next/link";
+import { RequestCategory } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
+import { auth } from "@/lib/auth";
+import { getSettingsOverview } from "@/lib/queries/settings";
 
-export default function SettingsPage() {
+function humanize(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatDateTime(iso: string | null) {
+  if (!iso) return "Not yet";
+  return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+export default async function SettingsPage() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return (
+      <GlassPanel className="p-10 text-center text-sm text-[var(--color-muted)]">
+        Please sign in to view settings.
+      </GlassPanel>
+    );
+  }
+
+  const overview = await getSettingsOverview(session.user.id);
+  const { hoas } = overview;
+
   return (
     <div className="space-y-6">
       <header className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">Settings</p>
-        <h1 className="text-3xl font-semibold text-slate-900">Settings</h1>
+        <h1 className="text-3xl font-semibold text-slate-900">Workspace settings</h1>
+        <p className="text-sm text-[var(--color-muted)]">See connected HOAs, Gmail inboxes, defaults, and your role.</p>
       </header>
 
       <GlassPanel className="p-6 space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">HOA Information</p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="space-y-1 text-sm text-[var(--color-ink)]">
-            <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Name</span>
-            <input className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm" defaultValue="" />
-          </label>
-          <label className="space-y-1 text-sm text-[var(--color-ink)]">
-            <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Timezone</span>
-            <select className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm" defaultValue="">
-              <option value="" disabled>
-                Select timezone
-              </option>
-              <option value="UTC">UTC</option>
-            </select>
-          </label>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">HOA Workspaces</p>
+          <Link href="/app/templates" className="text-xs font-semibold text-[var(--color-ink)] hover:underline">
+            Manage templates
+          </Link>
         </div>
-      </GlassPanel>
 
-      <GlassPanel className="p-6 space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Gmail Connections</p>
-        <div className="space-y-2 text-sm text-[var(--color-muted)]">
-          <p>No connected inboxes.</p>
-          <button className="inline-flex items-center rounded-md border border-[var(--color-border)] bg-white px-4 py-2 text-sm font-semibold text-[var(--color-ink)]">
-            Connect Gmail
-          </button>
-        </div>
+        {hoas.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-[var(--color-border)] bg-white/70 p-10 text-center text-sm text-[var(--color-muted)]">
+            No HOAs yet. Create an HOA to unlock Gmail sync and routing.
+          </div>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {hoas.map((hoa) => {
+              const connected = Boolean(hoa.gmail);
+              return (
+                <div key={hoa.id} className="rounded-xl border border-[var(--color-border)] bg-white/80 p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <p className="text-xs uppercase tracking-[0.3em] text-[var(--color-muted)]">HOA</p>
+                      <p className="text-lg font-semibold text-[var(--color-ink)]">{hoa.name}</p>
+                      <p className="text-xs text-[var(--color-muted)]">Created {formatDate(hoa.createdAt)}</p>
+                    </div>
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${
+                        connected ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {connected ? "Gmail connected" : "No Gmail"}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-[var(--color-ink)]">
+                    <div className="rounded-lg bg-[var(--color-surface)] px-3 py-2">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--color-muted)]">Open requests</p>
+                      <p className="text-base font-semibold">{hoa.stats.openRequests}</p>
+                    </div>
+                    <div className="rounded-lg bg-[var(--color-surface)] px-3 py-2">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--color-muted)]">Total requests</p>
+                      <p className="text-base font-semibold">{hoa.stats.requests}</p>
+                    </div>
+                    <div className="rounded-lg bg-[var(--color-surface)] px-3 py-2">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--color-muted)]">Threads tracked</p>
+                      <p className="text-base font-semibold">{hoa.stats.threads}</p>
+                    </div>
+                    <div className="rounded-lg bg-[var(--color-surface)] px-3 py-2">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--color-muted)]">Default templates</p>
+                      <p className="text-base font-semibold">{Object.keys(hoa.defaults).length || 0} set</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link
+                      href={`/app/hoa/${hoa.id}`}
+                      className="inline-flex items-center rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
+                    >
+                      Open workspace
+                    </Link>
+                    <Link
+                      href="/app/inbox"
+                      className="inline-flex items-center rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
+                    >
+                      View inbox
+                    </Link>
+                    <Link
+                      href={`/connect/gmail?hoaId=${hoa.id}`}
+                      className="inline-flex items-center rounded-md border border-[var(--color-border)] bg-[var(--color-ink)] px-3 py-2 text-sm font-semibold text-white"
+                    >
+                      {connected ? "Reconnect Gmail" : "Connect Gmail"}
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </GlassPanel>
 
       <GlassPanel className="p-6 space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Users & Roles</p>
-        <div className="space-y-3 text-sm text-[var(--color-ink)]">
-          <div className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] bg-white p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-[var(--color-ink)]">User</span>
-              <select className="rounded-md border border-[var(--color-border)] bg-white px-2 py-1 text-sm" defaultValue="Member">
-                <option value="Member">Member</option>
-                <option value="Admin">Admin</option>
-              </select>
-            </div>
+        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Gmail connections</p>
+
+        {hoas.length === 0 ? (
+          <p className="text-sm text-[var(--color-muted)]">No inboxes to connect yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {hoas.map((hoa) => (
+              <div key={hoa.id} className="rounded-lg border border-[var(--color-border)] bg-white/80 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-muted)]">{hoa.name}</p>
+                    <p className="text-sm font-semibold text-[var(--color-ink)]">
+                      {hoa.gmail ? `Connected to ${hoa.gmail.email}` : "Not connected"}
+                    </p>
+                    <p className="text-xs text-[var(--color-muted)]">Last poll: {formatDateTime(hoa.gmail?.lastPolledAt ?? null)}</p>
+                    {hoa.gmail?.lastPollError ? (
+                      <p className="text-xs font-semibold text-rose-700">Last error: {hoa.gmail.lastPollError}</p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      href={`/connect/gmail?hoaId=${hoa.id}`}
+                      className="inline-flex items-center rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
+                    >
+                      {hoa.gmail ? "Reconnect" : "Connect"}
+                    </Link>
+                    <Link
+                      href={`/app/hoa/${hoa.id}`}
+                      className="inline-flex items-center rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"
+                    >
+                      Workspace
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
+      </GlassPanel>
+
+      <GlassPanel className="p-6 space-y-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Defaults</p>
+        {hoas.length === 0 ? (
+          <p className="text-sm text-[var(--color-muted)]">Add an HOA to set default responses.</p>
+        ) : (
+          <div className="space-y-4">
+            {hoas.map((hoa) => (
+              <div key={hoa.id} className="rounded-lg border border-[var(--color-border)] bg-white/80 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--color-ink)]">{hoa.name}</p>
+                    <p className="text-xs text-[var(--color-muted)]">{hoa.stats.requests} requests tracked</p>
+                  </div>
+                  <Link href="/app/templates" className="text-xs font-semibold text-[var(--color-ink)] hover:underline">
+                    Manage templates
+                  </Link>
+                </div>
+
+                <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {Object.values(RequestCategory).map((category) => {
+                    const def = hoa.defaults[category];
+                    return (
+                      <div key={`${hoa.id}-${category}`} className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3">
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-[var(--color-muted)]">{humanize(category)}</p>
+                        <p className="text-sm font-semibold text-[var(--color-ink)]">{def ? def.title : "No default template"}</p>
+                        <p className="text-xs text-[var(--color-muted)]">
+                          {def?.priority ? `Priority ${humanize(def.priority)}` : "Any priority"}
+                          {def?.updatedAt ? ` · Updated ${formatDate(def.updatedAt)}` : null}
+                        </p>
+                        <div className="mt-2 flex gap-2">
+                          {def?.templateId ? (
+                            <Link
+                              href={`/app/templates/${def.templateId}`}
+                              className="text-xs font-semibold text-[var(--color-ink)] hover:underline"
+                            >
+                              Open template
+                            </Link>
+                          ) : (
+                            <Link
+                              href="/app/templates/new"
+                              className="text-xs font-semibold text-[var(--color-ink)] hover:underline"
+                            >
+                              Set default
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </GlassPanel>
 
       <GlassPanel className="p-6 space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Defaults</p>
-        <div className="grid gap-3 md:grid-cols-2">
-          <label className="space-y-1 text-sm text-[var(--color-ink)]">
-            <span className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Default template (Category)</span>
-            <select className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm" defaultValue="">
-              <option value="">None</option>
-            </select>
-          </label>
+        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Users & Roles</p>
+        <div className="rounded-lg border border-[var(--color-border)] bg-white/80 p-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-[var(--color-ink)]">{session.user.name ?? session.user.email}</p>
+              <p className="text-xs text-[var(--color-muted)]">{session.user.email}</p>
+            </div>
+            <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-700">
+              Owner
+            </span>
+          </div>
+          <p className="mt-2 text-xs text-[var(--color-muted)]">You&apos;re the only member today. Roles and invites will land here.</p>
         </div>
       </GlassPanel>
     </div>

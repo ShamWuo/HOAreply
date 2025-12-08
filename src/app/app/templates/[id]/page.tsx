@@ -163,6 +163,26 @@ export default async function TemplateDetailPage({ params }: PageProps) {
             >
               Cancel
             </Link>
+            {!isNew ? (
+              <form
+                action={`/api/policies/${id}`}
+                method="post"
+                className="inline-flex"
+                onSubmit={(event) => {
+                  if (!confirm("Delete this template? This cannot be undone.")) {
+                    event.preventDefault();
+                  }
+                }}
+              >
+                <input type="hidden" name="_method" value="DELETE" />
+                <button
+                  type="submit"
+                  className="inline-flex items-center rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700"
+                >
+                  Delete
+                </button>
+              </form>
+            ) : null}
           </div>
         </form>
       </GlassPanel>
