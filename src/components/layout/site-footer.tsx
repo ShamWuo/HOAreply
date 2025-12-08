@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const footerLinks = [
   {
@@ -29,6 +32,9 @@ const footerLinks = [
 ];
 
 export function SiteFooter() {
+  const pathname = usePathname() ?? "";
+  if (pathname.startsWith("/app")) return null;
+
   return (
     <footer className="border-t border-white/60 bg-white/90">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 text-sm text-slate-600 md:grid-cols-4 md:px-6">

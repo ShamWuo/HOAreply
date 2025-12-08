@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { RequestCategory, RequestPriority, RequestStatus } from "@prisma/client";
-import { RequestFilters } from "@/components/requests/filters";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { cn } from "@/lib/utils";
 
@@ -13,29 +12,23 @@ type RequestListItem = {
   status: RequestStatus;
   slaDueAt: string | null;
   updatedAt: string;
-  hasLegalRisk: boolean;
-  missingInfo: string[] | null;
   resident: { name: string | null; email: string | null } | null;
-  hoa: { id: string; name: string };
-  thread?: { unreadCount: number };
 };
 
 async function cookieHeader() {
   const store = await cookies();
-  const all = store
+  return store
     .getAll()
     .map((c) => `${c.name}=${c.value}`)
     .join("; ");
-  return all;
 }
 
 async function fetchRequests(searchParams: Record<string, string | string[] | undefined>) {
   const params = new URLSearchParams();
   Object.entries(searchParams).forEach(([key, value]) => {
-    if (typeof value === "string") params.set(key, value);
+    if (typeof value === "string" && value) params.set(key, value);
   });
 
-  // Normalize legacy search param to q for API compatibility
   if (params.has("search") && !params.has("q")) {
     const value = params.get("search");
     if (value) params.set("q", value);
@@ -43,12 +36,9 @@ async function fetchRequests(searchParams: Record<string, string | string[] | un
   }
 
   const baseUrl = process.env.APP_BASE_URL ?? "http://localhost:3000";
-  const cookie = await cookieHeader();
   const res = await fetch(`${baseUrl}/api/requests?${params.toString()}`, {
     cache: "no-store",
-    headers: {
-      cookie
-    },
+    headers: { cookie: await cookieHeader() },
   });
   if (!res.ok) {
     throw new Error("Failed to load requests");
@@ -57,7 +47,7 @@ async function fetchRequests(searchParams: Record<string, string | string[] | un
   return data.requests;
 }
 
-const STATUS_ORDER: RequestStatus[] = [
+const STATUS_OPTIONS: RequestStatus[] = [
   RequestStatus.NEW,
   RequestStatus.AWAITING_REPLY,
   RequestStatus.NEEDS_INFO,
@@ -66,24 +56,43 @@ const STATUS_ORDER: RequestStatus[] = [
   RequestStatus.CLOSED,
 ];
 
-const PRIORITY_ORDER: RequestPriority[] = [
+const PRIORITY_OPTIONS: RequestPriority[] = [
   RequestPriority.URGENT,
   RequestPriority.HIGH,
   RequestPriority.NORMAL,
   RequestPriority.LOW,
 ];
 
-function badgeColor(status: RequestStatus) {
+const CATEGORY_OPTIONS: RequestCategory[] = [
+  RequestCategory.MAINTENANCE,
+  RequestCategory.VIOLATION,
+  RequestCategory.BILLING,
+  RequestCategory.GENERAL,
+  RequestCategory.BOARD,
+  RequestCategory.LEGAL,
+  RequestCategory.SPAM,
+];
+
+function pillColor(priority: RequestPriority) {
+  if (priority === RequestPriority.URGENT || priority === RequestPriority.HIGH) return "bg-red-100 text-red-800";
+  if (priority === RequestPriority.NORMAL) return "bg-blue-100 text-blue-800";
+  return "bg-slate-100 text-slate-700";
+}
+
+function statusColor(status: RequestStatus) {
   if (status === RequestStatus.NEW || status === RequestStatus.AWAITING_REPLY) return "bg-blue-100 text-blue-800";
   if (status === RequestStatus.NEEDS_INFO) return "bg-amber-100 text-amber-800";
   if (status === RequestStatus.RESOLVED || status === RequestStatus.CLOSED) return "bg-emerald-100 text-emerald-800";
   return "bg-slate-100 text-slate-800";
 }
 
-function priorityColor(priority: RequestPriority) {
-  if (priority === RequestPriority.URGENT || priority === RequestPriority.HIGH) return "bg-red-100 text-red-800";
-  if (priority === RequestPriority.NORMAL) return "bg-blue-100 text-blue-800";
-  return "bg-slate-100 text-slate-700";
+function formatSla(slaDueAt: string | null) {
+  if (!slaDueAt) return "—";
+  const due = new Date(slaDueAt).getTime();
+  const now = Date.now();
+  const diffHours = Math.round(Math.abs(due - now) / 36e5);
+  if (due < now) return diffHours === 0 ? "Overdue" : `Overdue by ${diffHours}h`;
+  return diffHours <= 24 ? `Due in ${diffHours}h` : `Due in ${Math.round(diffHours / 24)}d`;
 }
 
 type PageProps = {
@@ -96,107 +105,111 @@ export default async function RequestsPage({ searchParams }: PageProps) {
   const requests = await fetchRequests(resolvedSearch);
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 md:px-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Requests</p>
-          <h1 className="text-3xl font-semibold text-slate-900">Resident requests</h1>
-          <p className="text-sm text-slate-600">Filter by status, priority, category, legal risk, or search by resident/subject.</p>
-        </div>
-        <Link
-          href="/app/policies"
-          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm"
-        >
-          Manage policies
-        </Link>
-      </div>
+    <div className="space-y-6">
+      <header className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-slate-500">Requests</p>
+        <h1 className="text-3xl font-semibold text-slate-900">Requests</h1>
+        <p className="text-sm text-slate-600">All resident communications, structured and tracked.</p>
+      </header>
 
-      <RequestFilters
-        statuses={STATUS_ORDER}
-        priorities={PRIORITY_ORDER}
-        categories={[
-          RequestCategory.MAINTENANCE,
-          RequestCategory.VIOLATION,
-          RequestCategory.BILLING,
-          RequestCategory.GENERAL,
-          RequestCategory.BOARD,
-          RequestCategory.LEGAL,
-          RequestCategory.SPAM,
-        ]}
-      />
+      <form className="grid gap-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm md:grid-cols-4" action="/app/requests" method="get">
+        <label className="space-y-1 text-[var(--color-muted)]">
+          <span className="text-xs font-semibold uppercase tracking-[0.25em]">Status</span>
+          <select
+            name="status"
+            defaultValue={typeof resolvedSearch.status === "string" ? resolvedSearch.status : ""}
+            className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-[var(--color-ink)]"
+          >
+            <option value="">All</option>
+            {STATUS_OPTIONS.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1 text-[var(--color-muted)]">
+          <span className="text-xs font-semibold uppercase tracking-[0.25em]">Category</span>
+          <select
+            name="category"
+            defaultValue={typeof resolvedSearch.category === "string" ? resolvedSearch.category : ""}
+            className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-[var(--color-ink)]"
+          >
+            <option value="">All</option>
+            {CATEGORY_OPTIONS.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1 text-[var(--color-muted)]">
+          <span className="text-xs font-semibold uppercase tracking-[0.25em]">Priority</span>
+          <select
+            name="priority"
+            defaultValue={typeof resolvedSearch.priority === "string" ? resolvedSearch.priority : ""}
+            className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-[var(--color-ink)]"
+          >
+            <option value="">All</option>
+            {PRIORITY_OPTIONS.map((priority) => (
+              <option key={priority} value={priority}>
+                {priority}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1 text-[var(--color-muted)] md:col-span-1">
+          <span className="text-xs font-semibold uppercase tracking-[0.25em]">Search</span>
+          <input
+            type="text"
+            name="q"
+            defaultValue={typeof resolvedSearch.q === "string" ? resolvedSearch.q : ""}
+            placeholder="Resident, email, subject"
+            className="w-full rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-[var(--color-ink)]"
+          />
+        </label>
+      </form>
 
-      <GlassPanel className="p-4">
+      <GlassPanel className="p-0">
         {requests.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-8 text-center text-sm text-slate-500">
-            No requests match these filters yet.
-          </div>
+          <div className="p-10 text-center text-sm text-[var(--color-muted)]">No requests match these filters.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="text-left text-xs uppercase tracking-[0.2em] text-slate-500">
-                <tr className="border-b border-slate-200">
-                  <th className="px-3 py-2">Subject</th>
-                  <th className="px-3 py-2">Resident</th>
-                  <th className="px-3 py-2">HOA</th>
-                  <th className="px-3 py-2">Category</th>
-                  <th className="px-3 py-2">Priority</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">SLA</th>
-                  <th className="px-3 py-2">Flags</th>
-                  <th className="px-3 py-2">Updated</th>
+              <thead className="text-left text-xs uppercase tracking-[0.2em] text-[var(--color-muted)]">
+                <tr className="border-b border-[var(--color-border)]">
+                  <th className="px-4 py-2">Resident</th>
+                  <th className="px-4 py-2">Subject / Summary</th>
+                  <th className="px-4 py-2">Category</th>
+                  <th className="px-4 py-2">Priority</th>
+                  <th className="px-4 py-2">Status</th>
+                  <th className="px-4 py-2">SLA Due</th>
+                  <th className="px-4 py-2">Last Updated</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[var(--color-border)]">
                 {requests.map((req) => (
-                  <tr key={req.id} className="hover:bg-slate-50">
-                    <td className="px-3 py-3">
-                      <Link href={`/app/requests/${req.id}`} className="font-semibold text-slate-900 hover:underline">
-                        {req.subject || "Untitled request"}
-                      </Link>
-                      <div className="text-[11px] text-slate-500">{req.id.slice(0, 8)}</div>
+                  <tr key={req.id} className="relative hover:bg-slate-50">
+                    <td className="px-4 py-3 align-top">
+                      <p className="font-semibold text-[var(--color-ink)]">{req.resident?.name ?? "Unknown"}</p>
+                      <p className="text-xs text-[var(--color-muted)]">{req.resident?.email ?? ""}</p>
                     </td>
-                    <td className="px-3 py-3 text-slate-700">
-                      {req.resident?.name ?? "Unknown"}{" "}
-                      <span className="text-slate-500">{req.resident?.email ? `| ${req.resident.email}` : ""}</span>
+                    <td className="px-4 py-3 align-top text-[var(--color-ink)]">
+                      {req.subject || "No subject provided"}
+                      <div className="text-[11px] text-[var(--color-muted)]">{req.id.slice(0, 8)}</div>
                     </td>
-                    <td className="px-3 py-3 text-slate-700">{req.hoa.name}</td>
-                    <td className="px-3 py-3">
-                      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">
-                        {req.category}
-                      </span>
+                    <td className="px-4 py-3 align-top">
+                      <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{req.category}</span>
                     </td>
-                    <td className="px-3 py-3">
-                      <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-semibold", priorityColor(req.priority))}>
-                        {req.priority}
-                      </span>
+                    <td className="px-4 py-3 align-top">
+                      <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-semibold", pillColor(req.priority))}>{req.priority}</span>
                     </td>
-                    <td className="px-3 py-3">
-                      <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-semibold", badgeColor(req.status))}>
-                        {req.status}
-                      </span>
+                    <td className="px-4 py-3 align-top">
+                      <span className={cn("inline-flex rounded-full px-2 py-0.5 text-xs font-semibold", statusColor(req.status))}>{req.status}</span>
                     </td>
-                    <td className="px-3 py-3 text-slate-600">{req.slaDueAt ? new Date(req.slaDueAt).toLocaleString() : "\u2014"}</td>
-                    <td className="px-3 py-3 text-slate-600">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {req.hasLegalRisk ? (
-                          <span className="inline-flex rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-red-700">
-                            Legal
-                          </span>
-                        ) : null}
-                        {req.missingInfo?.length ? (
-                          <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-700">
-                            Missing info
-                          </span>
-                        ) : null}
-                        {req.thread?.unreadCount ? (
-                          <span className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-700">
-                            {req.thread.unreadCount} unread
-                          </span>
-                        ) : null}
-                        {!req.hasLegalRisk && !req.missingInfo?.length && !req.thread?.unreadCount ? "—" : null}
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 text-slate-600">{new Date(req.updatedAt).toLocaleString()}</td>
+                    <td className="px-4 py-3 align-top text-[var(--color-muted)]">{formatSla(req.slaDueAt)}</td>
+                    <td className="px-4 py-3 align-top text-[var(--color-muted)]">{new Date(req.updatedAt).toLocaleString()}</td>
+                    <Link href={`/app/requests/${req.id}`} className="absolute inset-0" aria-label={`Open request ${req.subject || req.id}`} />
                   </tr>
                 ))}
               </tbody>
