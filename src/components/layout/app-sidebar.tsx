@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { SignOutButton } from "@/components/auth/signout-button";
 
 type NavItem = { label: string; href: string };
 
@@ -39,8 +40,13 @@ export function AppSidebar({ navItems, userName, userRole }: AppSidebarProps) {
         })}
       </nav>
       <div className="border-t border-[var(--color-border)] px-4 py-4">
-        <p className="text-sm font-semibold text-[var(--color-ink)]">{userName ?? "User"}</p>
-        <p className="text-xs text-[var(--color-muted)]">{userRole ?? "Member"}</p>
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold text-[var(--color-ink)]">{userName ?? "User"}</p>
+            <p className="text-xs text-[var(--color-muted)]">{userRole ?? "Member"}</p>
+          </div>
+          <SignOutButton />
+        </div>
       </div>
     </aside>
   );

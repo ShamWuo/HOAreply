@@ -60,5 +60,10 @@ export async function POST(req: Request) {
     },
   });
 
+  if (!contentType.includes("application/json")) {
+    const redirectUrl = new URL("/app/templates", req.url);
+    return NextResponse.redirect(redirectUrl);
+  }
+
   return NextResponse.json({ policy });
 }

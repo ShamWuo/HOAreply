@@ -20,6 +20,14 @@ function friendlyLabel(value: string) {
     .join(" ");
 }
 
+function summarizeLine(summary: string | null | undefined, fallback: string | null | undefined) {
+  const raw = (summary || fallback || "").trim();
+  if (!raw) return "Pending summary";
+  const firstLine = raw.split(/\r?\n/)[0];
+  const withoutLabel = firstLine.replace(/^(issue|context|risk level|suggested next step)\s*:\s*/i, "");
+  return withoutLabel.endsWith(".") ? withoutLabel : `${withoutLabel}`;
+}
+
 const STATUS_LABEL: Record<RequestStatus, string> = {
   [RequestStatus.OPEN]: "Open",
   [RequestStatus.IN_PROGRESS]: "In progress",
@@ -91,7 +99,7 @@ export default async function InboxPage() {
               <GlassPanel className="group flex flex-col gap-2 border border-[var(--color-border)] bg-white/80 p-4 transition hover:border-[var(--color-ink)]/20">
                 <div className="flex items-start gap-2">
                   <p className="flex-1 text-base font-semibold text-[var(--color-ink)] leading-relaxed">
-                    {item.summary ?? "No summary yet."}
+                    {summarizeLine(item.summary, item.subject)}
                   </p>
                   <span className={cn("inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-semibold", statusTone(item.status))}>
                     {STATUS_LABEL[item.status]}
@@ -104,9 +112,6 @@ export default async function InboxPage() {
                       {friendlyLabel(item.category)}
                     </span>
                     <span className={cn("inline-flex items-center rounded-full border px-2 py-1 text-[12px] font-semibold", pill(item.priority))}>{friendlyLabel(item.priority)}</span>
-                    <span className="inline-flex items-center rounded-full border border-[var(--color-border)] px-2 py-1 text-[12px] font-semibold text-[var(--color-ink)]">
-                      {STATUS_LABEL[item.status]}
-                    </span>
                     <span className="text-[12px] font-semibold text-[var(--color-ink)]">{formatSla(item.slaDueAt)}</span>
                   </span>
                 </div>

@@ -53,6 +53,12 @@ export async function PUT(req: Request, context: Context) {
     },
   });
 
+  const contentType = req.headers.get("content-type") ?? "";
+  if (contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data")) {
+    const redirectUrl = new URL("/app/templates", req.url);
+    return NextResponse.redirect(redirectUrl);
+  }
+
   return NextResponse.json({ policy: updated });
 }
 
