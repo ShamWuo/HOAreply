@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { assertHoaOwnership } from "@/lib/hoa";
 import { prisma } from "@/lib/prisma";
-import { hoaSchema } from "@/lib/validators";
+import { hoaUpdateSchema } from "@/lib/validators";
 
 type Params = Promise<{ hoaId: string }>;
 
@@ -14,15 +14,18 @@ export async function PATCH(request: Request, { params }: { params: Params }) {
   }
 
   const payload = await request.json().catch(() => null);
-  const parsed = hoaSchema.safeParse(payload);
+  const parsed = hoaUpdateSchema.safeParse(payload);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid HOA name" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid HOA update" }, { status: 400 });
   }
 
   await assertHoaOwnership(hoaId, session.user.id);
+  const updateData: { name?: string; riskProtectionEnabled?: boolean } = {};
+  if (parsed.data.name !== undefined) updateData.name = parsed.data.name;
+  if (parsed.data.riskProtectionEnabled !== undefined) updateData.riskProtectionEnabled = parsed.data.riskProtectionEnabled;
   await prisma.hOA.update({
     where: { id: hoaId },
-    data: { name: parsed.data.name },
+    data: updateData,
   });
 
   return NextResponse.json({ ok: true });

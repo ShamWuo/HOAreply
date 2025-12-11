@@ -30,16 +30,25 @@ export async function getInboxItemsForUser(userId: string, opts?: { limit?: numb
   if (!hoaIds.length) return { items: [] as InboxItem[], total: 0 };
 
   const soon = addHours(new Date(), 24);
+  const riskCategories = [RequestCategory.BOARD, RequestCategory.VIOLATION, RequestCategory.BILLING];
+
   const where: Prisma.RequestWhereInput = {
     hoaId: { in: hoaIds },
     kind: RequestKind.RESIDENT,
-    OR: [
-      { status: RequestStatus.NEEDS_INFO },
+    AND: [
       {
-        AND: [
-          { status: { in: [RequestStatus.OPEN, RequestStatus.IN_PROGRESS] } },
-          { slaDueAt: { not: null, lte: soon } },
+        OR: [
+          { status: RequestStatus.NEEDS_INFO },
+          {
+            AND: [
+              { status: { in: [RequestStatus.OPEN, RequestStatus.IN_PROGRESS] } },
+              { slaDueAt: { not: null, lte: soon } },
+            ],
+          },
         ],
+      },
+      {
+        OR: [{ category: { in: riskCategories } }, { hasLegalRisk: true }],
       },
     ],
   };

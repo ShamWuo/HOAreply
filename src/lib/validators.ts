@@ -13,7 +13,17 @@ export const loginSchema = z.object({
 
 export const hoaSchema = z.object({
   name: z.string().trim().min(2).max(180),
+  riskProtectionEnabled: z.boolean().optional(),
 });
+
+export const hoaUpdateSchema = z
+  .object({
+    name: z.string().trim().min(2).max(180).optional(),
+    riskProtectionEnabled: z.boolean().optional(),
+  })
+  .refine((data) => data.name !== undefined || data.riskProtectionEnabled !== undefined, {
+    message: "No updates provided",
+  });
 
 export const googleStateSchema = z.object({
   userId: z.string().cuid(),
@@ -24,3 +34,4 @@ export const googleStateSchema = z.object({
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type HoaInput = z.infer<typeof hoaSchema>;
+export type HoaUpdateInput = z.infer<typeof hoaUpdateSchema>;

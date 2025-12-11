@@ -77,8 +77,14 @@ function formatSla(slaDueAt: string | null) {
 function friendlyMissingInfo(items: string[] | null | undefined) {
   if (!items?.length) return null;
   return items.map((item) => {
-    if (item.toLowerCase().includes("unit")) return "Unit number is missing";
-    if (item.toLowerCase().includes("phone")) return "Phone number is missing";
+    const key = item.toLowerCase();
+    if (key.includes("unit")) return "Unit or lot number is missing";
+    if (key.includes("account")) return "Billing account identifier is missing";
+    if (key.includes("rule")) return "Cited rule/section is missing";
+    if (key.includes("date") || key.includes("time")) return "Date/time of incident is missing";
+    if (key.includes("arc_form")) return "ARC form is missing";
+    if (key.includes("description")) return "Request description is missing";
+    if (key.includes("location")) return "Location or unit for violation is missing";
     return `${item.replaceAll("_", " ")}`;
   });
 }
@@ -117,6 +123,22 @@ function deriveRequestTitle(request: RequestDetail) {
   return (request.summary ?? request.subject ?? "Resident request").split("\n")[0].trim();
 }
 
+function templateResolutionLabel({
+  draft,
+  request,
+  templates,
+}: {
+  draft?: { templateId: string | null; source?: string | null } | null;
+  request: RequestDetail;
+  templates: Array<{ id: string; title: string; isDefault: boolean }>;
+}) {
+  const hit = draft?.templateId ? templates.find((tpl) => tpl.id === draft.templateId) : null;
+  if (hit) {
+    return `${hit.title} ${hit.isDefault ? "(Default)" : ""}`.trim();
+  }
+  return `${friendlyLabel(request.category)} · ${STATUS_LABEL[request.status]} · System default template`;
+}
+
 type PageProps = {
   params?: Promise<{ id: string }>;
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -139,6 +161,7 @@ export default async function RequestDetailPage({ params }: PageProps) {
   const riskLevel = deriveRisk(request);
   const suggestedNext = deriveNextStep(request, isResidentRequest, hasMissingInfo, hasDraft);
   const nonResidentNotice = request.kind !== RequestKind.RESIDENT || !request.resident?.email;
+  const templateLabel = templateResolutionLabel({ draft, request, templates: matchingTemplates });
 
   return (
     <div className="space-y-6">
@@ -205,13 +228,19 @@ export default async function RequestDetailPage({ params }: PageProps) {
 
         {missingInfoLines?.length ? (
           <GlassPanel className="space-y-3 p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Missing Information (internal)</p>
-            <ul className="list-disc space-y-1 pl-4 text-sm text-[var(--color-ink)]">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Missing Information (blocks sending)</p>
+              <span className="text-[11px] text-[var(--color-muted)]">Sending unlocks automatically once filled.</span>
+            </div>
+            <ul className="space-y-1 text-sm text-[var(--color-ink)]">
               {missingInfoLines.map((line) => (
-                <li key={line}>{line}</li>
+                <li key={line} className="flex items-start gap-2 rounded-md border border-[var(--color-border)] bg-white px-3 py-2">
+                  <span className="text-[12px] font-semibold text-amber-700">[ ]</span>
+                  <span>{line}</span>
+                </li>
               ))}
             </ul>
-            <p className="text-xs text-[var(--color-muted)]">Use plain questions. Do not expose internal field names.</p>
+            <p className="text-xs text-[var(--color-muted)]">These come from the email and required HOA fields. Ask plainly; avoid internal labels.</p>
           </GlassPanel>
         ) : null}
 
@@ -258,6 +287,12 @@ export default async function RequestDetailPage({ params }: PageProps) {
             currentSource={draft?.source}
           />
 
+          <div className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-muted)]">
+            Draft generated using: <span className="font-semibold text-[var(--color-ink)]">{templateLabel}</span>
+            <br />
+            Resolution order: Category + Status → Category default → System default.
+          </div>
+
           <form action={`/api/requests/${request.id}/draft`} method="post" className="space-y-3">
             <textarea
               name="content"
@@ -283,7 +318,10 @@ export default async function RequestDetailPage({ params }: PageProps) {
         </GlassPanel>
 
         <GlassPanel className="space-y-3 p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Actions</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--color-muted)]">Actions</p>
+            <span className="text-[11px] text-[var(--color-muted)]">We never send without approval.</span>
+          </div>
           <ActionGroup
             requestId={request.id}
             hasDraft={hasDraft}
@@ -359,7 +397,7 @@ function ActionGroup({
   if (needsInfo) {
     return (
       <div className="space-y-2">
-        <p className="text-sm text-[var(--color-muted)]">Ask for missing details before replying. Sending is disabled.</p>
+        <p className="text-sm text-[var(--color-muted)]">Ask for the missing details above. Sending unlocks automatically when the info arrives.</p>
         <button
           type="button"
           disabled
@@ -373,7 +411,7 @@ function ActionGroup({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm text-[var(--color-muted)]">Approve before sending. Sending requires a saved draft.</p>
+      <p className="text-sm text-[var(--color-muted)]">Approve before sending. Drafts are never auto-sent.</p>
       <form action={`/api/requests/${requestId}/approve`} method="post">
         <button
           type="submit"
@@ -439,6 +477,7 @@ function TemplatePicker({
         ))}
       </select>
       <p className="text-[11px] text-[var(--color-muted)]">Applying replaces the current draft with approved language. Drafts are never auto-sent.</p>
+      <p className="text-[11px] text-[var(--color-muted)]">If no HOA template exists, the system defaults (above) are used automatically.</p>
       <button
         type="submit"
         className="inline-flex items-center rounded-md border border-[var(--color-border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--color-ink)]"

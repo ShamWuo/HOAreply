@@ -1,4 +1,4 @@
-import { AuditAction, MessageDirection, RequestCategory, RequestKind, RequestStatus } from "@prisma/client";
+import { AuditAction, DraftSource, MessageDirection, RequestCategory, RequestKind, RequestStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendRequestReply } from "@/lib/gmail";
 import { logInfo } from "@/lib/logger";
@@ -50,6 +50,7 @@ export async function approveDraft(params: { requestId: string; draftId?: string
     action: "approve",
     overrideExternal: params.overrideExternal,
     userId: params.userId,
+    riskProtected: Boolean(request.hoa?.riskProtectionEnabled),
   });
 
   const approved = await prisma.replyDraft.update({
@@ -109,15 +110,28 @@ export async function sendDraftReply(params: { requestId: string; draftId?: stri
   if (!draft) {
     throw new Error("Draft not found");
   }
+  const riskProtected = Boolean(request.hoa?.riskProtectionEnabled);
+  const riskCategory = riskProtected && (HIGH_RISK_CATEGORIES.has(request.category) || request.hasLegalRisk);
+  if (riskCategory && draft.source !== DraftSource.TEMPLATE) {
+    const riskyTerms = containsRiskyLanguage(draft.content);
+    if (riskyTerms.length) {
+      throw new ValidationError("Draft blocked due to risky language", {
+        code: "TONE_RISK",
+        terms: riskyTerms,
+      });
+    }
+  }
   await validateRequestGuard({
     request,
     action: "send",
     overrideExternal: params.overrideExternal,
     userId: params.userId,
+    riskProtected,
   });
   const requiresApproval =
     request.hasLegalRisk ||
-    request.category === RequestCategory.BOARD;
+    request.category === RequestCategory.BOARD ||
+    (riskProtected && HIGH_RISK_CATEGORIES.has(request.category));
   // Conservative: If request is legal/policy-sensitive, require explicit human approval before sending.
   if (requiresApproval && !draft.approvedAt) {
     throw new Error("Approval required before sending");
@@ -207,6 +221,7 @@ type GuardContext = {
   action: "approve" | "send";
   overrideExternal?: boolean;
   userId: string;
+  riskProtected: boolean;
 };
 
 export class ValidationError extends Error {
@@ -217,18 +232,44 @@ export class ValidationError extends Error {
   }
 }
 
+const HIGH_RISK_CATEGORIES = new Set<RequestCategory>([
+  RequestCategory.BOARD,
+  RequestCategory.VIOLATION,
+  RequestCategory.BILLING,
+]);
+
+function containsRiskyLanguage(body: string) {
+  const flags = [
+    /\bi think\b/i,
+    /\bi promise\b/i,
+    /guarantee/i,
+    /guaranteed/i,
+    /my personal opinion/i,
+    /legal action/i,
+    /we will (?:pay|cover)/i,
+  ];
+  const hits = flags.filter((re) => re.test(body));
+  return hits.map((hit) => hit.source);
+}
+
 async function validateRequestGuard(ctx: GuardContext) {
   const missingInfo = ctx.request.missingInfo ?? [];
   const nonResident = ctx.request.kind !== RequestKind.RESIDENT;
   const invalidStatus = ctx.request.status !== RequestStatus.IN_PROGRESS;
-  let failure: { code: "MISSING_INFO" | "NOT_RESIDENT_REQUEST" | "INVALID_STATUS"; reason: string } | null = null;
-  if (missingInfo.length > 0) {
+  const riskCategory = HIGH_RISK_CATEGORIES.has(ctx.request.category) || ctx.request.hasLegalRisk;
+
+  let failure:
+    | { code: "MISSING_INFO" | "NOT_RESIDENT_REQUEST" | "INVALID_STATUS" | "RISKY_LANGUAGE"; reason: string; details?: Record<string, unknown> }
+    | null = null;
+
+  if (ctx.riskProtected && riskCategory && missingInfo.length > 0) {
     failure = { code: "MISSING_INFO", reason: "Missing required information" };
   } else if (nonResident) {
     failure = { code: "NOT_RESIDENT_REQUEST", reason: "Non-resident or external message" };
   } else if (invalidStatus) {
     failure = { code: "INVALID_STATUS", reason: "Request is not in reviewable status" };
   }
+
   // Conservative: Always log every validation attempt for auditability, even if validation fails.
   await prisma.auditLog.create({
     data: {
@@ -244,9 +285,11 @@ async function validateRequestGuard(ctx: GuardContext) {
         status: ctx.request.status,
         kind: ctx.request.kind,
         overrideExternal: ctx.overrideExternal ?? false,
+        riskProtected: ctx.riskProtected,
       },
     },
   });
+
   if (failure) {
     throw new ValidationError(failure.reason, {
       code: failure.code,
@@ -254,6 +297,7 @@ async function validateRequestGuard(ctx: GuardContext) {
       missingInfo,
       kind: ctx.request.kind,
       status: ctx.request.status,
+      ...failure.details,
     });
   }
 }

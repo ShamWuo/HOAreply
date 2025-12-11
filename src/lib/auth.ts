@@ -121,16 +121,6 @@ const authConfig = {
     authorized({ auth, request }: AuthorizedCallbackArgs) {
       const { pathname } = request.nextUrl;
       const isProtectedPath = pathname.startsWith("/app") || pathname.startsWith("/connect");
-      const isJobPath = pathname.startsWith("/api/jobs/poll-gmail");
-
-      if (isJobPath) {
-        if (env.CRON_SECRET) {
-          const headerSecret = request.headers.get("x-cron-secret");
-          return headerSecret === env.CRON_SECRET;
-        }
-
-        return Boolean(auth?.user);
-      }
 
       if (!isProtectedPath) {
         return true;

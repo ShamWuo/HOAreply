@@ -44,11 +44,12 @@ export async function assertHoaOwnership(hoaId: string, userId: string) {
   return hoa;
 }
 
-export function createHoa(userId: string, name: string) {
+export function createHoa(userId: string, name: string, riskProtectionEnabled = false) {
   return prisma.hOA.create({
     data: {
       name,
       userId,
+      riskProtectionEnabled,
     },
   });
 }

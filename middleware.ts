@@ -17,5 +17,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/app/:path*", "/connect/:path*", "/api/jobs/poll-gmail", "/api/auth/:path*", "/auth/:path*"],
+  matcher: ["/app/:path*", "/connect/:path*", "/api/auth/:path*", "/auth/:path*"],
 };

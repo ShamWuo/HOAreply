@@ -12,7 +12,8 @@ export function DeleteHoaButton({ hoaId, className }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   async function handleDelete() {
-    if (!confirm("Delete this HOA? This also removes connected Gmail and threads.")) return;
+    if (!confirm("Double-check: Delete this HOA workspace? This removes connected Gmail and threads.")) return;
+    if (!confirm("Are you sure? This cannot be undone.")) return;
     setError(null);
     try {
       setIsDeleting(true);

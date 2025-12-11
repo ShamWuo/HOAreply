@@ -29,6 +29,7 @@ model HOA {
   id           String        @id @default(cuid())
   name         String
   userId       String
+  riskProtectionEnabled Boolean @default(false)
   createdAt    DateTime      @default(now())
   threads      EmailThread[]
   gmailAccount GmailAccount?

@@ -28,10 +28,11 @@ export async function POST(request: Request) {
   }
 
   const existingCount = await prisma.hOA.count({ where: { userId: session.user.id } });
-   if (existingCount > 0) {
-     return NextResponse.json({ error: "Only one HOA inbox is supported per workspace." }, { status: 400 });
-   }
+  if (existingCount > 0) {
+    return NextResponse.json({ error: "Only one HOA inbox is supported per workspace." }, { status: 400 });
+  }
 
-  const hoa = await createHoa(session.user.id, parsed.data.name);
+  const riskProtectionEnabled = parsed.data.riskProtectionEnabled ?? false;
+  const hoa = await createHoa(session.user.id, parsed.data.name, riskProtectionEnabled);
   return NextResponse.json({ hoa });
 }

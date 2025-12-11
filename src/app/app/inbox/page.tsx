@@ -63,16 +63,16 @@ export default async function InboxPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-3">
         <header className="space-y-1">
-          <p className="text-sm font-semibold text-slate-700">Inbox</p>
+          <p className="text-sm font-semibold text-slate-700">Your work queue</p>
           <h1 className="text-3xl font-semibold text-slate-900">Needs your attention</h1>
-          <p className="text-sm text-slate-600">Items here require a decision or action to move forward.</p>
+          <p className="text-sm text-slate-600">Requests show up here when the AI needs your decision (missing info or SLA risk). Respond here; everything else lives in Requests.</p>
         </header>
         <InboxRefreshButton />
       </div>
 
       {items.length === 0 ? (
         <GlassPanel className="p-10 text-center text-sm text-[var(--color-muted)]">
-          Nothing requires your attention right now.
+          Nothing requires your attention right now. Requests will appear when sending is blocked or an SLA is at risk.
         </GlassPanel>
       ) : (
         <div className="space-y-3">

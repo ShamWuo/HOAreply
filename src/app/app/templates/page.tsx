@@ -61,7 +61,11 @@ export default async function TemplatesPage() {
 
       <GlassPanel className="p-0">
         {policies.length === 0 ? (
-          <div className="p-10 text-center text-sm text-[var(--color-muted)]">No templates yet.</div>
+          <div className="space-y-3 p-10 text-sm text-[var(--color-muted)]">
+            <p className="text-base font-semibold text-[var(--color-ink)]">System defaults are active for every category and status.</p>
+            <p>AI drafts already use built-in templates such as General (Open), Maintenance (Needs info), and Violation (Open). Add your own to override them.</p>
+            <p className="text-xs">Resolution order: Category + Status default, then Category default, then System default.</p>
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">

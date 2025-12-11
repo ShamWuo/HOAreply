@@ -1,6 +1,7 @@
 import { RequestCategory, RequestStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { INBOX_STATUSES } from "@/lib/queries/inbox";
+import { getSystemTemplate } from "@/lib/templates/default-templates";
 
 export type SettingsTemplateDefault = {
   templateId: string | null;
@@ -14,6 +15,7 @@ export type SettingsHoa = {
   id: string;
   name: string;
   createdAt: string;
+  riskProtectionEnabled: boolean;
   gmail?: {
     email: string;
     lastPolledAt: string | null;
@@ -117,12 +119,34 @@ export async function getSettingsOverview(userId: string): Promise<SettingsOverv
           lastPollError: hoa.gmailAccount.lastPollError ?? null,
         }
       : null,
+    riskProtectionEnabled: hoa.riskProtectionEnabled,
     stats: {
       threads: threadCountMap.get(hoa.id) ?? 0,
       requests: requestTotalMap.get(hoa.id) ?? 0,
       openRequests: openRequestMap.get(hoa.id) ?? 0,
     },
-    defaults: defaultsByHoa.get(hoa.id) ?? {},
+    defaults: (() => {
+      const base = defaultsByHoa.get(hoa.id) ?? {};
+      const filled = { ...base } as Partial<Record<RequestCategory, Partial<Record<RequestStatus, SettingsTemplateDefault>>>>;
+      // Fill any gaps with system defaults so the UI never looks empty.
+      Object.values(RequestCategory).forEach((category) => {
+        const catDefaults = filled[category] ?? {};
+        [RequestStatus.NEEDS_INFO, RequestStatus.OPEN, RequestStatus.IN_PROGRESS].forEach((status) => {
+          if (!catDefaults[status]) {
+            const sys = getSystemTemplate(category, status);
+            catDefaults[status] = {
+              templateId: null,
+              title: sys.title,
+              category,
+              requestStatus: status,
+              updatedAt: null,
+            };
+          }
+        });
+        filled[category] = catDefaults;
+      });
+      return filled;
+    })(),
   }));
 
   return { hoas: settingsHoas };

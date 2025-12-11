@@ -3,6 +3,7 @@ import { RequestCategory, RequestStatus } from "@prisma/client";
 import { GlassPanel } from "@/components/ui/glass-panel";
 import { DeleteHoaButton } from "@/components/hoa/delete-hoa-button";
 import { CreateHoaForm } from "@/components/hoa/create-hoa-form";
+import { RiskProtectionToggle } from "@/components/hoa/risk-protection-toggle";
 import { auth } from "@/lib/auth";
 import { getSettingsOverview } from "@/lib/queries/settings";
 
@@ -91,6 +92,10 @@ export default async function SettingsPage() {
                       </div>
                     </div>
 
+                    <div className="mt-3">
+                      <RiskProtectionToggle hoaId={hoa.id} initialEnabled={hoa.riskProtectionEnabled} />
+                    </div>
+
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Link
                         href={`/app/hoa/${hoa.id}`}
@@ -111,6 +116,7 @@ export default async function SettingsPage() {
                         {connected ? "Reconnect Gmail" : "Connect Gmail"}
                       </Link>
                       <DeleteHoaButton hoaId={hoa.id} />
+                      <p className="text-[11px] text-[var(--color-muted)]">Reconnect opens Google consent. No emails are sent automatically.</p>
                     </div>
                   </div>
                 );

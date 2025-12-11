@@ -12,6 +12,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { logInfo } from "@/lib/logger";
+import { getSystemTemplate } from "@/lib/templates/default-templates";
 
 export type ClassificationResult = {
   category: RequestCategory;
@@ -34,24 +35,6 @@ type TemplateContext = {
   priority: RequestPriority;
   missingInfo: string[];
   subject: string;
-};
-
-const DEFAULT_REQUEST_INFO_TEMPLATE =
-  "Hi {{resident_name}},\n\nThanks for your message to {{hoa_name}}. To move this forward, please provide: {{missing_info}}.\n\nOnce we have this, we will continue the review.\n\nThanks,\n{{manager_name}}";
-
-const DEFAULT_CATEGORY_TEMPLATES: Record<RequestCategory, string> = {
-  [RequestCategory.MAINTENANCE]:
-    "Hi {{resident_name}},\n\nWe received your maintenance request. We're reviewing and will update you by {{sla_hint}}.\n\nThanks,\n{{manager_name}}",
-  [RequestCategory.VIOLATION]:
-    "Hi {{resident_name}},\n\nWe received your note. Your request is under review and will be responded to after review.\n\nThanks,\n{{manager_name}}",
-  [RequestCategory.BILLING]:
-    "Hi {{resident_name}},\n\nWe received your billing question and will review the account details.\n\nThanks,\n{{manager_name}}",
-  [RequestCategory.GENERAL]:
-    "Hi {{resident_name}},\n\nThanks for your message. We will review and respond soon.\n\nThanks,\n{{manager_name}}",
-  [RequestCategory.BOARD]:
-     "Hi {{resident_name}},\n\nWe received your board-related request and are reviewing it.\n\nThanks,\n{{manager_name}}",
-  [RequestCategory.OTHER]:
-    "Hi {{resident_name}},\n\nWe received your message and will review it shortly.\n\nThanks,\n{{manager_name}}",
 };
 
 function normalizeText(subject?: string, body?: string | null) {
@@ -78,10 +61,12 @@ export function classifyEmail(
     domain.includes("services") ||
     domain.includes("repairs");
   const looksLegal = /liability|legal|counsel|attorney|lawsuit|claim|demand/i.test(text);
+  const looksArc = /architectural|arc request|arc approval|paint scheme|roof color|fence|landscap|exterior/i.test(text);
 
   const category: RequestCategory = (() => {
     if (looksSalesy) return RequestCategory.OTHER;
     if (looksLegal) return RequestCategory.OTHER;
+    if (looksArc) return RequestCategory.BOARD;
     if (text.includes("board")) return RequestCategory.BOARD;
     if (text.includes("violation") || text.includes("notice") || text.includes("warning")) return RequestCategory.VIOLATION;
     if (text.includes("maintenance") || text.includes("repair") || text.includes("leak")) return RequestCategory.MAINTENANCE;
@@ -99,8 +84,31 @@ export function classifyEmail(
   const missingInfo: string[] = [];
   if (hasResident) {
     const hasUnit = /unit\s*\d|#\d|apt\s*\d/i.test(text);
-    if (!hasUnit) missingInfo.push("unit_number");
-    if (category === RequestCategory.BILLING && !/amount|invoice|payment/i.test(text)) missingInfo.push("billing_details");
+    if (!hasUnit && category !== RequestCategory.GENERAL) missingInfo.push("unit_number");
+    if (category === RequestCategory.BILLING) {
+      if (!/account|statement|invoice|bill\s*#|payment/i.test(text)) missingInfo.push("account_identifier");
+    }
+    if (category === RequestCategory.MAINTENANCE) {
+      if (!/at\s+|near\s+|intersection|street|road|pool|clubhouse|building/i.test(text)) missingInfo.push("location");
+      if (!/photo|attached|image|screenshot/i.test(text)) missingInfo.push("photo");
+      if (!/high|urgent|emergency|low|medium/i.test(text)) missingInfo.push("severity");
+    }
+    if (category === RequestCategory.VIOLATION) {
+      if (!/section|rule|bylaw|covenant/i.test(text)) missingInfo.push("rule_cited");
+      if (!/am|pm|\d{1,2}:\d{2}/i.test(text)) missingInfo.push("date_time");
+      if (!/address|lot|unit/i.test(text)) missingInfo.push("location_or_unit");
+    }
+    if (category === RequestCategory.BOARD && looksArc) {
+      if (!/lot/i.test(text)) missingInfo.push("lot_number");
+      if (!/material|color|paint|roof|fence|landscap/i.test(text)) missingInfo.push("description");
+      if (!/start/i.test(text)) missingInfo.push("estimated_start_date");
+      if (!/attach|form/i.test(text)) missingInfo.push("arc_form");
+    }
+    if (category === RequestCategory.BOARD && !looksArc) {
+      if (!/lot/i.test(text)) missingInfo.push("lot_number");
+      if (!/board request|arc|architectural|plan|paint|roof|fence|landscap/i.test(text)) missingInfo.push("description");
+      if (!/attach|form/i.test(text)) missingInfo.push("arc_form");
+    }
   }
 
   const hasLegalRisk = looksLegal;
@@ -181,25 +189,27 @@ async function pickTemplate(hoaId: string, category: RequestCategory, status: Re
 
   if (fallback) return fallback;
 
+  const systemDefault = getSystemTemplate(category, status);
   return {
     id: null,
-    bodyTemplate: DEFAULT_CATEGORY_TEMPLATES[category] ?? DEFAULT_CATEGORY_TEMPLATES[RequestCategory.GENERAL],
-    title: "Default",
+    bodyTemplate: systemDefault.body,
+    title: systemDefault.title,
   } as const;
 }
 
-async function pickRequestInfoTemplate(hoaId: string) {
+async function pickRequestInfoTemplate(hoaId: string, category: RequestCategory) {
   const template = await prisma.policyTemplate.findFirst({
-    where: { hoaId, isActive: true, requestStatus: RequestStatus.NEEDS_INFO },
+    where: { hoaId, isActive: true, requestStatus: RequestStatus.NEEDS_INFO, category },
     orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
   });
 
   if (template) return template;
 
+  const systemDefault = getSystemTemplate(category, RequestStatus.NEEDS_INFO);
   return {
     id: null,
-    bodyTemplate: DEFAULT_REQUEST_INFO_TEMPLATE,
-    title: "Request info",
+    bodyTemplate: systemDefault.body,
+    title: systemDefault.title,
   } as const;
 }
 
@@ -266,7 +276,7 @@ export async function runRequestPipeline(requestId: string) {
   });
 
   const template = classification.missingInfo.length > 0
-    ? await pickRequestInfoTemplate(request.hoaId)
+    ? await pickRequestInfoTemplate(request.hoaId, classification.category)
     : await pickTemplate(request.hoaId, classification.category, routing.status);
 
   const draftContent = renderTemplate(template.bodyTemplate, {
@@ -286,7 +296,7 @@ export async function runRequestPipeline(requestId: string) {
       messageId: latestMessage?.id,
       content: draftContent,
       createdBy: DraftAuthor.ai,
-      source: template.id ? DraftSource.TEMPLATE : DraftSource.MANUAL,
+      source: DraftSource.TEMPLATE,
     },
   });
 
@@ -307,7 +317,7 @@ export async function runRequestPipeline(requestId: string) {
       hoaId: request.hoaId,
       requestId: request.id,
       action: AuditAction.DRAFT_GENERATED,
-      metadata: { draftId: draft.id, templateId: template.id, source: draft.source },
+      metadata: { draftId: draft.id, templateId: template.id, source: draft.source, templateTitle: template.title },
     },
   ];
 
@@ -446,7 +456,7 @@ export async function handleInboundRequest(params: {
   });
 
   const template = classification.missingInfo.length > 0
-    ? await pickRequestInfoTemplate(params.hoaId)
+    ? await pickRequestInfoTemplate(params.hoaId, classification.category)
     : await pickTemplate(params.hoaId, classification.category, routing.status);
 
   const draftContent = renderTemplate(template.bodyTemplate, {
